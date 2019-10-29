@@ -14,7 +14,7 @@ from .errors import RequiredFieldError, BadTypeError, AmbiguousTypeError
 # it is a completely valid default value.
 NotSet = object()
 
-# BSON compatible types, which can be returned by toPlain.
+# BSON compatible types, which can be returned by toBsonEncodable.
 BsonEncodable = Union[
     float, str, object, Dict, List, bytes, bool, datetime.datetime, None,
     Pattern, int, bytes
@@ -131,13 +131,13 @@ class BaseField(object):
             return matching_models[0]
         return models[0]
 
-    def toPlain(self, value: types) -> BsonEncodable:
-        """Optionally return a python object instead of JSON compatible value.
+    def toBsonEncodable(self, value: types) -> BsonEncodable:
+        """Optionally return a bson encodable python object.
 
         Returned object should be BSON compatible. By default uses the
         `to_struct` method, which creates JSON compatible types. JSON is
-        compatible with bson. When required, this method should cast the value
-        to supported bson type.
+        compatible with bson, but only has support for limited types. When
+        required, this method should cast the value to supported bson type.
         See: https://api.mongodb.com/python/current/api/bson/index.html
 
         For example: when a value is a datetime object return it as a datetime
@@ -146,7 +146,6 @@ class BaseField(object):
 
         :param value: Value
         :return: a value which should be bson encodable
-
         """
         return self.to_struct(value=value)
 
