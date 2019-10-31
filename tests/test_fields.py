@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import datetime
 
 import pytest
 from jsonmodels import models, fields, validators, errors
@@ -39,6 +40,21 @@ def test_bool_field():
     assert field.parse_value(0) is False
     assert field.parse_value('') is False
     assert field.parse_value([]) is False
+
+
+def test_date_field():
+    field = fields.DateField()
+
+    class Event(models.Base):
+        when = field
+
+    event = Event()
+    assert event.when is None
+
+    event.when = datetime.date(2019, 10, 30)
+    assert event.when == datetime.date(2019, 10, 30)
+
+    assert field.parse_value("2019-10-30") == datetime.date(2019, 10, 30)
 
 
 def test_custom_field():

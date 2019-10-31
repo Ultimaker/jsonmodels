@@ -617,6 +617,9 @@ class DateField(StringField):
             return value.strftime(self.str_format)
         return value.strftime(self.default_format)
 
+    def toBsonEncodable(self, value: datetime.date) -> BsonEncodable:
+        return value
+
     def parse_value(self, value):
         """Parse string into instance of `date`."""
         if value is None:
