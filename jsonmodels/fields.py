@@ -653,7 +653,7 @@ class DateTimeField(StringField):
         Keep datetime object a datetime object, since pymongo supports that.
         """
         if not isinstance(value, self.types):
-            raise ModelValidationError.invalidType(self.types, field_name=self.name)
+            raise BadTypeError(value, self.types, is_list=False)
         return value
 
     def parse_value(self, value):
