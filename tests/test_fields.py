@@ -1,4 +1,6 @@
 from collections import OrderedDict
+import datetime
+from datetime import timezone
 
 import pytest
 from jsonmodels import models, fields, validators, errors
@@ -39,6 +41,22 @@ def test_bool_field():
     assert field.parse_value(0) is False
     assert field.parse_value('') is False
     assert field.parse_value([]) is False
+
+
+def test_datetime_field():
+    field = fields.DateTimeField()
+
+    class Event(models.Base):
+        when = field
+
+    event = Event()
+    assert event.when is None
+    event.when = datetime.datetime(2019, 10, 30, 1, 2, 3)
+    assert field.toBsonEncodable(event.when) == \
+        datetime.datetime(2019, 10, 30, 1, 2, 3)
+    assert event.when == datetime.datetime(2019, 10, 30, 1, 2, 3)
+    assert field.parse_value("2019-10-30T01:02:03.000000Z") == \
+        datetime.datetime(2019, 10, 30, 1, 2, 3, tzinfo=timezone.utc)
 
 
 def test_custom_field():
