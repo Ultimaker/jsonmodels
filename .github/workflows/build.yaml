@@ -1,0 +1,16 @@
+---
+name: Build and test
+on:
+  push:
+    branches-ignore:
+      - master
+      - staging
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      CI_REGISTRY_IMAGE: docker.pkg.github.com/${{ github.repository }}
+    steps:
+    - uses: actions/checkout@v1
+    - run: docker build -t jsonmodels:tests .
