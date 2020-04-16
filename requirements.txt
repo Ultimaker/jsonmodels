@@ -15,5 +15,6 @@ pytest
 pytest-cov
 sphinxcontrib-spelling
 tox
+typing
 virtualenv
 wheel
