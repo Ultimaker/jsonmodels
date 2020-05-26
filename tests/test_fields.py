@@ -1,8 +1,9 @@
 from collections import OrderedDict
 import datetime
 from datetime import timezone
+from typing import Dict, Union
 
-import pytest
+import pytest   # type: ignore
 from jsonmodels import models, fields, validators, errors
 
 
@@ -14,7 +15,7 @@ def test_deprecated_structue_name():
     assert field.structue_name('default') == 'default'
 
 
-def test_bool_field():
+def test_bool_field() -> None:
 
     field = fields.BoolField()
 
@@ -43,7 +44,7 @@ def test_bool_field():
     assert field.parse_value([]) is False
 
 
-def test_datetime_field():
+def test_datetime_field() -> None:
     field = fields.DateTimeField()
 
     class Event(models.Base):
@@ -59,7 +60,7 @@ def test_datetime_field():
         datetime.datetime(2019, 10, 30, 1, 2, 3, tzinfo=timezone.utc)
 
 
-def test_custom_field():
+def test_custom_field() -> None:
     class NameField(fields.StringField):
         def __init__(self):
             super(NameField, self).__init__(required=True)
@@ -75,7 +76,7 @@ def test_custom_field():
     assert person.to_struct() == expected
 
 
-def test_custom_field_validation():
+def test_custom_field_validation() -> None:
     class NameField(fields.StringField):
         def __init__(self):
             super(NameField, self).__init__(
@@ -102,7 +103,7 @@ def test_custom_field_validation():
         person.validate()
 
 
-def test_map_field():
+def test_map_field() -> None:
     class Model(models.Base):
         str_to_int = fields.MapField(fields.StringField(), fields.IntField())
         int_to_str = fields.MapField(fields.IntField(), fields.StringField())
@@ -131,13 +132,13 @@ class CircularMapModel(models.Base):
     )
 
 
-def test_map_field_circular():
+def test_map_field_circular() -> None:
     model = CircularMapModel(mapping={1: {}, 2: CircularMapModel()})
-    expected = {'mapping': {1: {}, 2: {}}}
+    expected: Dict[str, Dict[int, Dict]] = {'mapping': {1: {}, 2: {}}}
     assert expected == model.to_struct()
 
 
-def test_map_field_validation():
+def test_map_field_validation() -> None:
     class Model(models.Base):
         str_to_int = fields.MapField(fields.StringField(), fields.IntField())
         int_to_str = fields.MapField(fields.IntField(), fields.StringField(),
@@ -162,7 +163,7 @@ def test_map_field_validation():
         model.validate()
 
 
-def test_generic_field():
+def test_generic_field() -> None:
     class Model(models.Base):
         field = fields.GenericField()
 
@@ -178,7 +179,7 @@ def test_generic_field():
     assert expected == model_ordered.to_struct()
 
 
-def test_derived_list_omit_empty():
+def test_derived_list_omit_empty() -> None:
 
     class Car(models.Base):
         wheels = fields.DerivedListField(fields.StringField(),
@@ -190,7 +191,7 @@ def test_derived_list_omit_empty():
     assert viper.to_struct() == {"doors": []}
 
 
-def test_automatic_model_detection():
+def test_automatic_model_detection() -> None:
 
     class FullName(models.Base):
         first_name = fields.StringField()
@@ -204,7 +205,7 @@ def test_automatic_model_detection():
 
     class Person(models.Base):
 
-        names = fields.ListField(
+        names = fields.ListField[Union[str, int, float, bool, FullName, Car]](
             [str, int, float, bool, FullName, Car],
             help_text='A list of names.',
         )

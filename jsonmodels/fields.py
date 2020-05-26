@@ -5,10 +5,14 @@ import datetime
 import re
 import six
 from dateutil.parser import parse
-from typing import List, Optional, Dict, Set, Union, Pattern
+from typing import Any, List, Generic, Optional, Dict, Sequence, Set, Tuple, TypeVar, Union, Pattern
 
 from .collections import ModelCollection
 from .errors import RequiredFieldError, BadTypeError, AmbiguousTypeError
+
+MYPY = False
+if MYPY:
+    from .models import Base
 
 # unique marker for "no default value specified". None is not good enough since
 # it is a completely valid default value.
@@ -21,18 +25,24 @@ BsonEncodable = Union[
 ]
 
 
-class BaseField(object):
+T = TypeVar("T")
+
+
+class BaseField(Generic[T]):
 
     """Base class for all fields."""
 
-    types = None
+    types: Tuple[Any, ...] = ()
+
+    validators: List[Any] = []
+    memory: WeakKeyDictionary
 
     def __init__(
             self,
             required=False,
             nullable=False,
             help_text=None,
-            validators=None,
+            validators: Optional[List[Any]]=None,
             default=NotSet,
             name=None):
         self.memory = WeakKeyDictionary()
@@ -47,31 +57,31 @@ class BaseField(object):
         self._default = default
 
     @property
-    def has_default(self):
+    def has_default(self) -> bool:
         return self._default is not NotSet
 
-    def _assign_validators(self, validators):
+    def _assign_validators(self, validators) -> None:
         if validators and not isinstance(validators, list):
             validators = [validators]
         self.validators = validators or []
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: "Base", value: Optional[T]) -> None:
         self._finish_initialization(type(instance))
         value = self.parse_value(value)
         self.validate(value)
         self.memory[instance._cache_key] = value
 
-    def __get__(self, instance, owner=None):
+    def __get__(self, instance: "Base", owner=None) -> T:
         if instance is None:
             self._finish_initialization(owner)
-            return self
+            return self     # type: ignore
 
         self._finish_initialization(type(instance))
 
         self._check_value(instance)
         return self.memory[instance._cache_key]
 
-    def _finish_initialization(self, owner):
+    def _finish_initialization(self, owner) -> None:
         pass
 
     def _check_value(self, obj):
@@ -82,21 +92,21 @@ class BaseField(object):
         value = self.__get__(obj)
         self.validate(value)
 
-    def validate(self, value):
+    def validate(self, value: Optional[T]) -> None:
         self._check_types()
         self._validate_against_types(value)
         self._check_against_required(value)
         self._validate_with_custom_validators(value)
 
-    def _check_against_required(self, value):
+    def _check_against_required(self, value) -> None:
         if value is None and self.required:
             raise RequiredFieldError()
 
-    def _validate_against_types(self, value):
+    def _validate_against_types(self, value) -> None:
         if value is not None and not isinstance(value, self.types):
             raise BadTypeError(value, self.types, is_list=False)
 
-    def _check_types(self):
+    def _check_types(self) -> None:
         if self.types is None:
             tpl = 'Field "{type}" is not usable, try different field type.'
             raise ValueError(tpl.format(type=type(self).__name__))
@@ -131,7 +141,7 @@ class BaseField(object):
             return matching_models[0]
         return models[0]
 
-    def toBsonEncodable(self, value: types) -> BsonEncodable:
+    def toBsonEncodable(self, value) -> BsonEncodable:
         """Optionally return a bson encodable python object.
 
         Returned object should be BSON compatible. By default uses the
@@ -153,7 +163,7 @@ class BaseField(object):
         """Cast value to Python dict."""
         return value
 
-    def parse_value(self, value):
+    def parse_value(self, value: Optional[Any]) -> Optional[T]:
         """Parse value from primitive to desired format.
 
         Each field can parse value to form it wants it to be (like string or
@@ -195,18 +205,18 @@ class BaseField(object):
         return self.structure_name(default)
 
 
-class StringField(BaseField):
+class StringField(BaseField[str]):
 
     """String field."""
 
-    types = six.string_types
+    types: Tuple[Any, ...] = six.string_types
 
 
-class IntField(BaseField):
+class IntField(BaseField[int]):
 
     """Integer field."""
 
-    types = (int,)
+    types: Tuple[Any, ...] = (int,)
 
     def parse_value(self, value):
         """Cast value to `int`, e.g. from string or long"""
@@ -219,18 +229,18 @@ class IntField(BaseField):
             raise BadTypeError(value, types=(int,), is_list=False)
 
 
-class FloatField(BaseField):
+class FloatField(BaseField[float]):
 
     """Float field."""
 
-    types = (float, int)
+    types: Tuple[Any, ...] = (float, int)
 
 
-class BoolField(BaseField):
+class BoolField(BaseField[bool]):
 
     """Bool field."""
 
-    types = (bool,)
+    types: Tuple[Any, ...] = (bool,)
 
     def parse_value(self, value):
         """Cast value to `bool`."""
@@ -238,13 +248,18 @@ class BoolField(BaseField):
         return bool(parsed) if parsed is not None else None
 
 
-class ListField(BaseField):
+I = TypeVar("I")
+
+
+class ListField(BaseField[List[I]]):
 
     """List field."""
 
-    types = (list, tuple)
+    types: Tuple[Any, ...] = (list, tuple)
+    items_types: Tuple[Any, ...]
+    item_validators: List[Any]
 
-    def __init__(self, items_types=None, item_validators=(), omit_empty=False,
+    def __init__(self, items_types: Optional[List[Any]]=None, item_validators: Union[Any, List[Any]]=[], omit_empty=False,
                  *args, **kwargs):
         """Init.
 
@@ -359,13 +374,15 @@ class DerivedListField(ListField):
         :param validators: The validators for the list field.
         """
         self._field = field
+
+        fixed_kwargs = kwargs.copy()
+        fixed_kwargs["items_types"] = field.types
+        fixed_kwargs["item_validators"] = field.validators
         super(DerivedListField, self).__init__(
-            items_types=field.types,
-            item_validators=field.validators,
-            *args, **kwargs,
+            *args, **fixed_kwargs,
         )
 
-    def to_struct(self, values: List[any]) -> List[any]:
+    def to_struct(self, values: List[Any]) -> Optional[List[Any]]:
         """
         Converts the list to its output format.
         :param values: The values in the list.
@@ -374,18 +391,22 @@ class DerivedListField(ListField):
         return [self._field.to_struct(value) for value in values] \
             if values or not self._omit_empty else None
 
-    def parse_value(self, values: List[any]) -> List[any]:
+    def parse_value(self, values: Optional[Any]) -> Optional[List[Any]]:
         """
         Converts the list to its internal format.
         :param values: The values in the list.
         :return: The converted values.
         """
+        if values is None:
+            return None
+
         try:
             return [self._field.parse_value(value) for value in values]
         except TypeError:
             raise BadTypeError(values, self._field.types, is_list=True)
+        return None
 
-    def validate_single_value(self, value: any) -> None:
+    def validate_single_value(self, value: Any) -> None:
         """
         Validates a single value in the list.
         :param value: One of the values in the list.
@@ -443,7 +464,7 @@ class EmbeddedField(BaseField):
         return value.to_struct()
 
 
-class MapField(BaseField):
+class MapField(BaseField[Dict[Any, Any]]):
     """
     Model field that keeps a mapping between two other fields.
     It is basically a dictionary with key and values being separate fields.
@@ -453,7 +474,7 @@ class MapField(BaseField):
     included in the to_struct method.
 
     """
-    types = (dict,)
+    types: Tuple[Any, ...] = (dict,)
 
     def __init__(self, key_field: BaseField, value_field: BaseField,
                  **kwargs):
@@ -476,18 +497,18 @@ class MapField(BaseField):
         self._key_field._finish_initialization(owner)
         self._value_field._finish_initialization(owner)
 
-    def get_default_value(self) -> any:
+    def get_default_value(self) -> Any:
         """ Gets the default value for this field """
         default = super(MapField, self).get_default_value()
         if default is None and self.required:
             return dict()
         return default
 
-    def parse_value(self, values: Optional[dict]) -> Optional[dict]:
+    def parse_value(self, values: Optional[Any]) -> Optional[Dict[Any, Any]]:
         """ Parses the given values into a new dict. """
         values = super().parse_value(values)
         if values is None:
-            return
+            return None
         items = [
             (self._key_field.parse_value(key),
              self._value_field.parse_value(value))
@@ -495,7 +516,7 @@ class MapField(BaseField):
         ]
         return type(values)(items)  # Preserves OrderedDict
 
-    def to_struct(self, values: Optional[dict]) -> Optional[dict]:
+    def to_struct(self, values: Dict[Any, Any]) -> Dict[Any, Any]:
         """ Casts the field values into a dict. """
         items = [
             (self._key_field.to_struct(key),
@@ -504,7 +525,7 @@ class MapField(BaseField):
         ]
         return type(values)(items)  # Preserves OrderedDict
 
-    def validate(self, values: Optional[dict]) -> Optional[dict]:
+    def validate(self, values: Optional[Dict[Any, Any]]) -> None:
         """
         Validates all keys and values in the map field.
         :param values: The values in the mapping.
@@ -567,7 +588,7 @@ class TimeField(StringField):
 
     """Time field."""
 
-    types = (datetime.time,)
+    types: Tuple[Any, ...] = (datetime.time,)
 
     def __init__(self, str_format=None, *args, **kwargs):
         """Init.
@@ -598,7 +619,7 @@ class DateField(StringField):
 
     """Date field."""
 
-    types = (datetime.date,)
+    types: Tuple[Any, ...] = (datetime.date,)
     default_format = '%Y-%m-%d'
 
     def __init__(self, str_format=None, *args, **kwargs):
@@ -630,7 +651,7 @@ class DateTimeField(StringField):
 
     """Datetime field."""
 
-    types = (datetime.datetime,)
+    types: Tuple[Any, ...] = (datetime.datetime,)
 
     def __init__(self, str_format=None, *args, **kwargs):
         """Init.
@@ -648,7 +669,7 @@ class DateTimeField(StringField):
             return value.strftime(self.str_format)
         return value.isoformat()
 
-    def toBsonEncodable(self, value: datetime) -> datetime:
+    def toBsonEncodable(self, value: datetime.datetime) -> datetime.datetime:
         """
         Keep datetime object a datetime object, since pymongo supports that.
         """
@@ -666,17 +687,17 @@ class DateTimeField(StringField):
             return None
 
 
-class GenericField(BaseField):
+class GenericField(BaseField[Any]):
     """
     Field that supports any kind of value, converting models to their correct
     struct, keeping ordered dictionaries in their original order.
     """
-    types = (any,)
+    types: Tuple[Any, ...] = (any,)
 
     def _validate_against_types(self, value) -> None:
         pass
 
-    def to_struct(self, values: any) -> any:
+    def to_struct(self, values: Any) -> Any:
         """ Casts value to Python structure. """
         from .models import Base
         if isinstance(values, Base):

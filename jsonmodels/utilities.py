@@ -5,8 +5,10 @@ import sre_constants
 import six
 import re
 from collections import namedtuple
+from typing import cast, Any, List, Tuple
 
-SCALAR_TYPES = tuple(list(six.string_types) + [int, float, bool])
+six_string_types: List[Any] = list(six.string_types)
+SCALAR_TYPES = cast(Tuple[Any], tuple(six_string_types + [int, float, bool]))
 
 ECMA_TO_PYTHON_FLAGS = {
     'i': re.I,

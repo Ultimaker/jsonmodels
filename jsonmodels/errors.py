@@ -1,4 +1,4 @@
-from typing import List, Tuple, Type
+from typing import Any, List, Tuple, Type
 
 
 class ValidationError(RuntimeError):
@@ -38,7 +38,7 @@ class FieldValidationError(ValidationError):
     Enriches a validator error with the name of the field that caused it.
     """
     def __init__(self, model_name: str, field_name: str,
-                 given_value: any, error: ValidatorError):
+                 given_value: Any, error: ValidatorError):
         """
         :param model_name: The name of the model.
         :param field_name: The name of the field.
@@ -78,7 +78,7 @@ class BadTypeError(ValidatorError):
     expected one
     """
 
-    def __init__(self, value: any, types: Tuple, is_list: bool):
+    def __init__(self, value: Any, types: Tuple, is_list: bool):
         """
         :param value: The given value.
         :param types: The accepted types.
@@ -186,7 +186,7 @@ class MaxValidationError(ValidatorError):
 class EnumError(ValidatorError):
     """ Error raised by the Enum validator """
 
-    def __init__(self, value: any, choices: List[any]):
+    def __init__(self, value: Any, choices: List[Any]):
         """
         :param value: The given value.
         :param choices: The allowed choices.

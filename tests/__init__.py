@@ -1,6 +1,8 @@
 def _have_flake8():
     try:
-        import flake8  # noqa: F401
+        MYPY = False
+        if not MYPY:
+            import flake8  # noqa: F401
         return True
     except ImportError:
         return False
