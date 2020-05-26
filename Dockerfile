@@ -1,5 +1,5 @@
 # Install pytest python library as well as add all files in current directory
-FROM python:3.7 AS base
+FROM python:3.8 AS base
 WORKDIR /usr/src/app
 RUN apt-get update \
     && apt-get install -y enchant \
