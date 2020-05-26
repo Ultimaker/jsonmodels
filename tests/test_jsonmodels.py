@@ -54,10 +54,10 @@ def test_base_field_should_not_be_usable():
 
     alan = Person()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(errors.FieldValidationError):
         alan.name = 'some name'
 
-    with pytest.raises(ValueError):
+    with pytest.raises(errors.FieldValidationError):
         alan.name = 2345
 
 
