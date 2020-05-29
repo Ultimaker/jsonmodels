@@ -13,6 +13,7 @@ py
 pyflakes
 pytest
 pytest-cov
+python-dateutil
 sphinxcontrib-spelling
 tox
 virtualenv
