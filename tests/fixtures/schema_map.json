@@ -1,1 +1,1 @@
-{"type": "object", "additionalProperties": false, "properties": {"data": "object"}}
+{"type": "object", "additionalProperties": false, "properties": {"data": { "type": "object"} }}
