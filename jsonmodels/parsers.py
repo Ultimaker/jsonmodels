@@ -55,6 +55,8 @@ def build_json_schema_object(cls, parent_builder=None):
             builder.add_field(name, field, _parse_embedded(field, builder))
         elif isinstance(field, fields.ListField):
             builder.add_field(name, field, _parse_list(field, builder))
+        elif isinstance(field, fields.MapField):
+            builder.add_field(name, field, 'object')
         else:
             builder.add_field(
                 name, field, _create_primitive_field_schema(field))

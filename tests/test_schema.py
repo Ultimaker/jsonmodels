@@ -453,3 +453,16 @@ def test_primitives():
     b = builders.PrimitiveBuilder(float, nullable=True, default=0)
     assert b.build() == {"type": ["number", "null"], "default": 0,
                          "format": "float"}
+
+
+def test_map_field():
+    class FaultData(models.Base):
+        data = fields.MapField(
+            key_field=fields.StringField(),
+            value_field=fields.StringField()
+        )
+
+    schema = FaultData.to_json_schema()
+    pattern = get_fixture('schema_map.json')
+
+    assert compare_schemas(pattern, schema)
