@@ -143,9 +143,8 @@ def _apply_validators_modifications(field_schema, field):  # noqa: ignore=C901
             except AttributeError:
                 pass
             except TypeError:
-                # ignore the cases in which the items are not strings,
-                # until we know how to deal with Enums that are not strings
-                # (CS-1097)
+                # CS-1097 ignore the cases in which the items are not strings,
+                # until OpenAPI spec supports generating non-string Enum items
                 pass
 
 
