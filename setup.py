@@ -4,7 +4,6 @@ import os
 import sys
 
 from setuptools.command.test import test as TestCommand
-from jsonmodels import __version__, __author__, __email__
 
 from setuptools import setup
 
@@ -54,12 +53,9 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
     name=PROJECT_NAME,
-    version=__version__,
     description='Models to make easier to deal with structures that'
     ' are converted to, or read from JSON.',
     long_description=readme + '\n\n' + history,
-    author=__author__,
-    author_email=__email__,
     url='https://github.com/beregond/jsonmodels',
     packages=[
         PROJECT_NAME,
