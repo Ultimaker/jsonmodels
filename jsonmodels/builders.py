@@ -142,6 +142,10 @@ def _apply_validators_modifications(field_schema, field):
                 validator.modify_schema(field_schema["items"])
             except AttributeError:
                 pass
+            except TypeError:
+                # ignore the cases in which the items are not strings, until we know
+                # how to deal with openapi enums that are not strings (CS-1097)
+                pass
 
 
 class PrimitiveBuilder(Builder):
