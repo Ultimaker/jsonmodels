@@ -127,7 +127,7 @@ class ObjectBuilder(Builder):
         return not bool(self.parent)
 
 
-def _apply_validators_modifications(field_schema, field):
+def _apply_validators_modifications(field_schema, field):  # noqa: ignore=C901
     for validator in field.validators:
         try:
             validator.modify_schema(field_schema)
@@ -141,6 +141,10 @@ def _apply_validators_modifications(field_schema, field):
             try:
                 validator.modify_schema(field_schema["items"])
             except AttributeError:
+                pass
+            except TypeError:
+                # CS-1097 ignore the cases in which the items are not strings,
+                # until OpenAPI spec supports generating non-string Enum items
                 pass
 
 
