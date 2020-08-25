@@ -8,7 +8,20 @@ from .errors import MinValidationError, MaxValidationError, BadTypeError, \
 from . import utilities
 
 
-class Min(object):
+class Validator(object):
+    """Base type for all validators, to be used in type hints.
+
+    For example:
+
+    >>> def my_func(validator: Validator):
+    >>>     ...
+    >>>
+    >>> my_func(Min(1))
+    >>> my_func(Max(1))
+    """
+
+
+class Min(Validator):
 
     """Validator for minimum value."""
 
@@ -36,7 +49,7 @@ class Min(object):
             field_schema['exclusiveMinimum'] = True
 
 
-class Max(object):
+class Max(Validator):
 
     """Validator for maximum value."""
 
@@ -64,7 +77,7 @@ class Max(object):
             field_schema['exclusiveMaximum'] = True
 
 
-class Regex(object):
+class Regex(Validator):
 
     """Validator for regular expressions."""
 
@@ -122,7 +135,7 @@ class Regex(object):
         )
 
 
-class Length(object):
+class Length(Validator):
 
     """Validator for length."""
 
@@ -167,7 +180,7 @@ class Length(object):
             field_schema[key] = self.maximum_value
 
 
-class Enum(object):
+class Enum(Validator):
 
     """Validator for enums."""
 
