@@ -5,7 +5,7 @@ import datetime
 import re
 import six
 from dateutil.parser import parse
-from typing import List, Optional, Dict, Set, Union, Pattern
+from typing import List, Optional, Dict, Set, Union, Pattern, Type, Any
 
 from .collections import ModelCollection
 from .errors import RequiredFieldError, BadTypeError, AmbiguousTypeError
@@ -73,7 +73,8 @@ class BaseField(object):
 
     def _finish_initialization(self, owner):
         """
-        Makes sure the field is initialized, converting any `_LazyType` references to other fields.
+        Makes sure the field is initialized, converting any `_LazyType`
+        references to other fields.
         """
 
     def _check_value(self, obj):
@@ -329,7 +330,8 @@ class ListField(BaseField):
 
     def _finish_initialization(self, owner):
         """
-        Makes sure the list field is initialized, converting any `_LazyType` references for the items.
+        Makes sure the list field is initialized, converting any
+        `_LazyType` references for the items.
         """
         super(ListField, self)._finish_initialization(owner)
 
@@ -372,8 +374,9 @@ class DerivedListField(ListField):
 
     def _finish_initialization(self, owner):
         """
-        Makes sure the derived list field is initialized, converting any `_LazyType` references.
-        Initializes both the base list field and the child field.
+        Makes sure the derived list field is initialized, converting any
+        `_LazyType` references. Initializes both the base list field and
+        the child field.
         """
         super()._finish_initialization(owner)
         self._field._finish_initialization(owner)
@@ -532,10 +535,11 @@ class MapField(BaseField):
 
 class _LazyType(object):
     """
-    Class used to temporarily save a class name to be used as reference in the JSON models.
-    It is automatically created whenever the class reference is a string.
-    This allows types to be referenced in Embedded/List fields that have not been declared yet.
-    That is necessary for circular and recursive references in the models.
+    Class used to temporarily save a class name to be used as reference in
+    the JSON models. It is automatically created whenever the class
+    reference is a string. This allows types to be referenced in
+    Embedded/List fields that have not been declared yet. That is necessary
+    for circular and recursive references in the models.
     """
 
     def __init__(self, path: str):
