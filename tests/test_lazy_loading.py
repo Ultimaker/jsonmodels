@@ -77,6 +77,10 @@ def test_embedded_model(model):
 
 
 def test_embedded_list_model():
+    """
+    Tests a lazy loaded model combined with the derived list fields.
+    Lazy fields are necessary to allow recursive types.
+    """
     entity = LazyDerivedList()
     assert entity.secondaries == []
     entity.name = 'chuck'

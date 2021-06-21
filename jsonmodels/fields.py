@@ -72,7 +72,9 @@ class BaseField(object):
         return self.memory[instance._cache_key]
 
     def _finish_initialization(self, owner):
-        pass
+        """
+        Makes sure the field is initialized, converting any `_LazyType` references to other fields.
+        """
 
     def _check_value(self, obj):
         if obj._cache_key not in self.memory:
@@ -326,6 +328,9 @@ class ListField(BaseField):
             raise BadTypeError(value, self.items_types, is_list=True)
 
     def _finish_initialization(self, owner):
+        """
+        Makes sure the list field is initialized, converting any `_LazyType` references for the items.
+        """
         super(ListField, self)._finish_initialization(owner)
 
         types = []
@@ -366,6 +371,10 @@ class DerivedListField(ListField):
         )
 
     def _finish_initialization(self, owner):
+        """
+        Makes sure the derived list field is initialized, converting any `_LazyType` references.
+        Initializes both the base list field and the child field.
+        """
         super()._finish_initialization(owner)
         self._field._finish_initialization(owner)
 
@@ -522,16 +531,22 @@ class MapField(BaseField):
 
 
 class _LazyType(object):
+    """
+    Class used to temporarily save a class name to be used as reference in the JSON models.
+    It is automatically created whenever the class reference is a string.
+    This allows types to be referenced in Embedded/List fields that have not been declared yet.
+    That is necessary for circular and recursive references in the models.
+    """
 
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.path = path
 
-    def evaluate(self, base_cls):
+    def evaluate(self, base_cls: Type[Any]):
         module, type_name = _evaluate_path(self.path, base_cls)
         return _import(module, type_name)
 
 
-def _evaluate_path(relative_path, base_cls):
+def _evaluate_path(relative_path: str, base_cls: Type[Any]):
     base_module = base_cls.__module__
 
     modules = _get_modules(relative_path, base_module)
