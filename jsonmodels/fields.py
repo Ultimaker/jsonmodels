@@ -365,6 +365,10 @@ class DerivedListField(ListField):
             *args, **kwargs,
         )
 
+    def _finish_initialization(self, owner):
+        super()._finish_initialization(owner)
+        self._field._finish_initialization(owner)
+
     def to_struct(self, values: List[any]) -> List[any]:
         """
         Converts the list to its output format.

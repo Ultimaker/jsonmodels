@@ -45,6 +45,12 @@ class Eighth(models.Base):
     secondary = fields.EmbeddedField('.SomeWrongEntity')
 
 
+class LazyDerivedList(models.Base):
+
+    name = fields.StringField()
+    secondaries = fields.DerivedListField(fields.EmbeddedField('Secondary'))
+
+
 class Secondary(models.Base):
 
     data = fields.IntField()
@@ -68,6 +74,20 @@ def test_embedded_model(model):
         entity.secondary = 'something different'
 
     entity.secondary = None
+
+
+def test_embedded_list_model():
+    entity = LazyDerivedList()
+    assert entity.secondaries == []
+    entity.name = 'chuck'
+    entity.secondaries.append(Secondary(data=1))
+    assert entity.to_struct()['secondaries'] == [{'data': 1}]
+
+    entity.secondaries = []
+    assert entity.to_struct()['secondaries'] == []
+
+    with pytest.raises(errors.ValidationError):
+        entity.secondaries = ['something different']
 
 
 def test_relative_too_much():
