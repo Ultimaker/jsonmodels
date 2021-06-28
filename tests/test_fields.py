@@ -6,14 +6,6 @@ import pytest
 from jsonmodels import models, fields, validators, errors
 
 
-def test_deprecated_structue_name():
-    field = fields.BoolField(name='field')
-    assert field.structue_name('default') == 'field'
-
-    field = fields.BoolField()
-    assert field.structue_name('default') == 'default'
-
-
 def test_bool_field():
 
     field = fields.BoolField()
