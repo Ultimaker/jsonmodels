@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest import mock
 
 from jsonmodels import fields
@@ -9,3 +10,10 @@ def test_toBsonEncodable_calls_to_struct(f):
     field = fields.StringField()
     field.toBsonEncodable(value="text")
     f.assert_called_once()
+
+
+def test_toBsonEncodable_lists():
+    """Test if default implementation of toBsonEncodable works for lists."""
+    field = fields.ListField(items_types=(datetime, str))
+    values = ["text", datetime(2021, 1, 1)]
+    assert field.toBsonEncodable(value=values) == values

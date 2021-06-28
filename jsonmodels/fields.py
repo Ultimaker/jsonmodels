@@ -1,4 +1,3 @@
-import warnings
 from weakref import WeakKeyDictionary
 
 import datetime
@@ -150,7 +149,7 @@ class BaseField(object):
         :param value: Value
         :return: a value which should be bson encodable
         """
-        return self.to_struct(value=value)
+        return self.to_struct(value)
 
     def to_struct(self, value):
         """Cast value to Python dict."""
@@ -191,11 +190,6 @@ class BaseField(object):
 
     def structure_name(self, default):
         return self.name if self.name is not None else default
-
-    def structue_name(self, default):
-        warnings.warn("`structue_name` is deprecated, please use "
-                      "`structure_name`")
-        return self.structure_name(default)
 
 
 class StringField(BaseField):
