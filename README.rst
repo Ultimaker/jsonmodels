@@ -1,19 +1,6 @@
 ===========
-JSON models
+UltiMaker JSON models
 ===========
-
-.. image:: https://badge.fury.io/py/jsonmodels.png
-    :target: http://badge.fury.io/py/jsonmodels
-
-.. image:: https://travis-ci.org/beregond/jsonmodels.png?branch=master
-    :target: https://travis-ci.org/beregond/jsonmodels
-
-.. image:: https://img.shields.io/pypi/dm/jsonmodels.svg
-    :target: https://pypi.python.org/pypi/jsonmodels
-
-.. image:: https://coveralls.io/repos/beregond/jsonmodels/badge.png
-    :target: https://coveralls.io/r/beregond/jsonmodels
-
 
 `jsonmodels` is library to make it easier for you to deal with structures that
 are converted to, or read from JSON.
@@ -21,6 +8,16 @@ are converted to, or read from JSON.
 * Free software: BSD license
 * Documentation: http://jsonmodels.rtfd.org
 * Source: https://github.com/beregond/jsonmodels
+
+This repository contains a fork from Beregond's work.
+It contains some extra features like BSON support for working with MongoDB documents.
+It also includes some new fields: DerivedListField, GenericField and MapField.
+
+We use jsonmodels within the Stardust team to validate and document all data.
+With this strong validation and built-in documentation generation, we make sure that our data is always consistent and has clear meaning.
+That is valid for the request and response models of our REST API, exposed via the generated OpenAPI documentation, but also for the models used in our MongoDB database.
+
+There is some work to do in order to improve type checking when using this library.
 
 Features
 --------

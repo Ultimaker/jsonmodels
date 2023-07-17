@@ -77,6 +77,18 @@ def test_value_replacements():
     assert isinstance(alan.children, list)
 
 
+def test_ignore_empty_string():
+
+    class Person(models.Base):
+
+        name = fields.StringField(ignore_empty_string=True)
+        surname = fields.StringField(ignore_empty_string=False)
+
+    alan = Person(name="", surname="")
+    assert alan.to_struct() == {"name": ""}
+    assert alan.surname is None
+
+
 def test_list_field():
 
     class Car(models.Base):

@@ -20,7 +20,7 @@ BsonEncodable = Union[
 ]
 
 
-class BaseField(object):
+class BaseField:
 
     """Base class for all fields."""
 
@@ -34,6 +34,14 @@ class BaseField(object):
             validators=None,
             default=NotSet,
             name=None):
+        """
+        :param required: Whether the field is required to be given.
+        :param nullable: Whether the field can be set to None.
+        :param help_text: Optional help text for the field, used in the documentation.
+        :param validators: Optional list of validators to be used on the field.
+        :param default: Optional default value for the field.
+        :param name: Optional alternative name for the field's JSON key. Otherwise, property name is used.
+        """
         self.memory = WeakKeyDictionary()
         self.required = required
         self.help_text = help_text
@@ -156,11 +164,10 @@ class BaseField(object):
         return value
 
     def parse_value(self, value):
-        """Parse value from primitive to desired format.
-
-        Each field can parse value to form it wants it to be (like string or
-        int).
-
+        """
+        Parse value from primitive (e.g. JSON) to desired (i.e. Python) format.
+        Each field can parse value to form it wants it to be (like string or int).
+        :param value: Value to parse.
         """
         return value
 
@@ -197,6 +204,41 @@ class StringField(BaseField):
     """String field."""
 
     types = six.string_types
+
+    def __init__(
+            self,
+            required=False,
+            nullable=None,
+            help_text=None,
+            validators=None,
+            default=NotSet,
+            name=None,
+            ignore_empty_string: bool = False):
+        """
+        :param required: Whether the field is required to be given.
+        :param nullable: Whether the field can be set to None.
+        :param help_text: Optional help text for the field, used in the documentation.
+        :param validators: Optional list of validators to be used on the field.
+        :param default: Optional default value for the field.
+        :param name: Optional alternative name for the field's JSON key. Otherwise, property name is used.
+        :param ignore_empty_string: If True, empty string will be treated as None.
+        """
+        super().__init__(
+            required,
+            nullable=nullable if nullable is not None else not required,
+            help_text=help_text, validators=validators, default=default,
+            name=name,
+        )
+        self.ignore_empty_string = ignore_empty_string
+
+    def parse_value(self, value: Any) -> Optional[str]:
+        """
+        Parse value from primitive to desired format.
+        :param value: Value given in the primitive format, e.g. in the JSON request.
+        """
+        if self.ignore_empty_string and value == '':
+            return None
+        return super(StringField, self).parse_value(value)
 
 
 class IntField(BaseField):
@@ -451,6 +493,9 @@ class EmbeddedField(BaseField):
 
     def to_struct(self, value):
         return value.to_struct()
+
+    def toBsonEncodable(self, value) -> BsonEncodable:
+        return value.toBsonEncodable()
 
 
 class MapField(BaseField):
