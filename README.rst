@@ -10,8 +10,11 @@ are converted to, or read from JSON.
 * Source: https://github.com/beregond/jsonmodels
 
 This repository contains a fork from Beregond's work.
-It contains some extra features like BSON support for working with MongoDB documents.
-It also includes some new fields: DerivedListField, GenericField and MapField.
+It contains some extra features:
+- BSON support for working with MongoDB documents (toBsonEncodable method).
+- New fields: DerivedListField, GenericField and MapField.
+- Specific [error classes](./jsonmodels/errors.py) with metadata, instead of a single one.
+- Base Validator class
 
 We use jsonmodels within the Stardust team to validate and document all data.
 With this strong validation and built-in documentation generation, we make sure that our data is always consistent and has clear meaning.
