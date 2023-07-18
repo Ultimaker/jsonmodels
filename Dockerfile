@@ -2,7 +2,6 @@
 FROM python:3.7 AS base
 WORKDIR /usr/src/app
 RUN apt-get update \
-    && apt-get install -y enchant \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install coveralls
