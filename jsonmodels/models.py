@@ -1,4 +1,6 @@
 import six
+from pydantic import BaseModel, Field
+from pydantic.fields import FieldInfo
 
 from . import parsers, errors
 from .fields import BaseField
@@ -25,25 +27,14 @@ class JsonmodelMeta(type):
             taken_names.add(structure_name)
 
 
-class Base(six.with_metaclass(JsonmodelMeta, object)):
+class Base(BaseModel):
 
     """Base class for all models."""
 
-    def __init__(self, **kwargs):
-        self._cache_key = _CacheKey()
-        self.populate(**kwargs)
-
     def populate(self, **values):
         """Populate values to fields. Skip non-existing."""
-        values = values.copy()
-        fields = list(self.iterate_with_name())
-        for _, structure_name, field in fields:
-            if structure_name in values:
-                self.set_field(field, structure_name,
-                               values.pop(structure_name))
-        for name, _, field in fields:
-            if name in values:
-                self.set_field(field, name, values.pop(name))
+        for key, value in values.items():
+            setattr(self, key, value)
 
     def get_field(self, field_name):
         """Get field associated with given attribute."""
@@ -56,7 +47,7 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
     def set_field(self, field, field_name, value):
         """ Sets the value of a field. """
         try:
-            field.__set__(self, value)
+            setattr(self, field_name, value)
         except ValidatorError as error:
             raise FieldValidationError(type(self).__name__, field_name,
                                        value, error)
@@ -66,22 +57,17 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
         for name, field in self.iterate_over_fields():
             yield name, field
 
+    # noinspection PyMethodOverriding
     def validate(self):
         """Explicitly validate all the fields."""
-        for name, field in self:
-            try:
-                field.validate_for_object(self)
-            except ValidatorError as error:
-                value = field.memory.get(self._cache_key)
-                raise FieldValidationError(type(self).__name__, name,
-                                           value, error)
+        type(self).model_validate(self)
 
     @classmethod
     def iterate_over_fields(cls):
         """Iterate through fields as `(attribute_name, field_instance)`."""
         for attr in dir(cls):
             class_attribute = getattr(cls, attr)
-            if isinstance(class_attribute, BaseField):
+            if isinstance(class_attribute, FieldInfo):
                 yield attr, class_attribute
 
     @classmethod
