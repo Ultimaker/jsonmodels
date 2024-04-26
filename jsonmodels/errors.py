@@ -1,4 +1,6 @@
-from typing import Any, List, Tuple, Type
+from typing import Any, List, Sized, Tuple, Type
+
+from .types import EmbedType, Model
 
 
 class ValidationError(RuntimeError):
@@ -56,14 +58,14 @@ class FieldValidationError(ValidationError):
 
 class RequiredFieldError(ValidatorError):
     """ Error raised when a required field has no value """
-    def __init__(self):
+    def __init__(self) -> None:
         super(RequiredFieldError, self).__init__('Field is required!')
 
 
 class RegexError(ValidatorError):
     """ Error raised by the Regex validator """
 
-    def __init__(self, value: str, pattern: str):
+    def __init__(self, value: str, pattern: str) -> None:
         tpl = 'Value "{value}" did not match pattern "{pattern}".'
         super(RegexError, self).__init__(tpl.format(
             value=value, pattern=pattern
@@ -78,7 +80,7 @@ class BadTypeError(ValidatorError):
     expected one
     """
 
-    def __init__(self, value: Any, types: Tuple, is_list: bool):
+    def __init__(self, value: Any, types: Tuple, is_list: bool) -> None:
         """
         :param value: The given value.
         :param types: The accepted types.
@@ -104,7 +106,7 @@ class AmbiguousTypeError(ValidatorError):
     that supports multiple types
     """
 
-    def __init__(self, types: Tuple):
+    def __init__(self, types: tuple[EmbedType, ...]) -> None:
         """ The types that are allowed """
         tpl = 'Cannot decide which type to choose from "{types}".'
         super(AmbiguousTypeError, self).__init__(tpl.format(
@@ -116,7 +118,7 @@ class AmbiguousTypeError(ValidatorError):
 class MinLengthError(ValidatorError):
     """ Error raised by the Length validator when too few items are present """
 
-    def __init__(self, value: list, minimum_length: int):
+    def __init__(self, value: Sized, minimum_length: int) -> None:
         """
         :param value: The given value.
         :param minimum_length: The minimum length expected.
@@ -132,7 +134,7 @@ class MinLengthError(ValidatorError):
 class MaxLengthError(ValidatorError):
     """ Error raised by the Length validator when receiving too many items """
 
-    def __init__(self, value: list, maximum_length: int):
+    def __init__(self, value: Sized, maximum_length: int) -> None:
         """
         :param value: The given value.
         :param maximum_length: The maximum length expected.
@@ -148,7 +150,7 @@ class MaxLengthError(ValidatorError):
 class MinValidationError(ValidatorError):
     """ Error raised by the Min validator """
 
-    def __init__(self, value, minimum_value, exclusive: bool):
+    def __init__(self, value: int | float, minimum_value: int | float, exclusive: bool) -> None:
         """
         :param value: The given value.
         :param minimum_value: The minimum value allowed.
@@ -167,7 +169,7 @@ class MinValidationError(ValidatorError):
 class MaxValidationError(ValidatorError):
     """ Error raised by the Max validator """
 
-    def __init__(self, value, maximum_value, exclusive: bool):
+    def __init__(self, value: int | float, maximum_value: int | float, exclusive: bool) -> None:
         """
         :param value: The given value.
         :param maximum_value: The maximum value allowed.
@@ -186,7 +188,7 @@ class MaxValidationError(ValidatorError):
 class EnumError(ValidatorError):
     """ Error raised by the Enum validator """
 
-    def __init__(self, value: Any, choices: List[Any]):
+    def __init__(self, value: Any, choices: List[Any]) -> None:
         """
         :param value: The given value.
         :param choices: The allowed choices.

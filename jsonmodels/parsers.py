@@ -1,16 +1,13 @@
 """Parsers to change model structure into different ones."""
 import inspect
+from typing import Any, cast
 
-from . import fields, builders, errors
+from . import builders, errors, fields
+from .types import Builder, CollectionField, Field, JSONSchemaProperty, JSONSchemaTypeName, JSONValue, Model
 
 
-def to_struct(model):
-    """
-    Cast instance of model to python structure.
-    :param model: Model to be casted.
-    :rtype: ``dict``
-
-    """
+def to_struct(model: Model) -> JSONValue:
+    """Cast instance of model to python structure."""
     model.validate()
 
     resp = {}
@@ -25,18 +22,13 @@ def to_struct(model):
     return resp
 
 
-def to_json_schema(cls):
-    """Generate JSON schema for given class.
-
-    :param cls: Class to be casted.
-    :rtype: ``dict``
-
-    """
+def to_json_schema(cls: Any) -> JSONSchemaProperty:
+    """Generate JSON schema for given class."""
     builder = build_json_schema(cls)
-    return builder.build()
+    return cast(JSONSchemaProperty, builder.build())
 
 
-def build_json_schema(value, parent_builder=None):
+def build_json_schema(value: Any, parent_builder: Builder | None = None) -> Builder:
     from .models import Base
 
     cls = value if inspect.isclass(value) else value.__class__
@@ -46,7 +38,7 @@ def build_json_schema(value, parent_builder=None):
         return build_json_schema_primitive(cls, parent_builder)
 
 
-def build_json_schema_object(cls, parent_builder=None):
+def build_json_schema_object(cls: type[Model], parent_builder: Builder | None = None) -> builders.ObjectBuilder:
     builder = builders.ObjectBuilder(cls, parent_builder)
     if builder.count_type(builder.type) > 1:
         return builder
@@ -56,12 +48,11 @@ def build_json_schema_object(cls, parent_builder=None):
         elif isinstance(field, fields.ListField):
             builder.add_field(name, field, _parse_list(field, builder))
         else:
-            builder.add_field(
-                name, field, _create_primitive_field_schema(field))
+            builder.add_field(name, field, _create_primitive_field_schema(field))
     return builder
 
 
-def _parse_list(field, parent_builder):
+def _parse_list(field: fields.ListField, parent_builder: Builder | None) -> str | JSONSchemaProperty:
     builder = builders.ListBuilder(
         parent_builder, field.nullable, default=field._default)
     for type in field.items_types:
@@ -69,7 +60,7 @@ def _parse_list(field, parent_builder):
     return builder.build()
 
 
-def _parse_embedded(field, parent_builder):
+def _parse_embedded(field: fields.EmbeddedField, parent_builder: Builder | None) -> str | JSONSchemaProperty:
     builder = builders.EmbeddedBuilder(
         parent_builder, field.nullable, default=field._default)
     for type in field.types:
@@ -77,13 +68,13 @@ def _parse_embedded(field, parent_builder):
     return builder.build()
 
 
-def build_json_schema_primitive(cls, parent_builder):
+def build_json_schema_primitive(cls: type, parent_builder: Builder | None) -> Builder:
     builder = builders.PrimitiveBuilder(cls, parent_builder)
     return builder
 
 
-def _create_primitive_field_schema(field):
-    schema = {'type': _get_schema_type(field)}
+def _create_primitive_field_schema(field: Field) -> JSONSchemaProperty:
+    schema: JSONSchemaProperty = {'type': _get_schema_type(field)}
 
     if isinstance(field, fields.FloatField):
         schema['format'] = 'float'
@@ -98,7 +89,8 @@ def _create_primitive_field_schema(field):
     return schema
 
 
-def _get_schema_type(field):
+def _get_schema_type(field: Field) -> JSONSchemaTypeName:
+    obj_type: JSONSchemaTypeName
     if isinstance(field, fields.StringField):
         obj_type = 'string'
     elif isinstance(field, fields.IntField):
@@ -112,5 +104,5 @@ def _get_schema_type(field):
     else:
         raise errors.FieldNotSupported(type(field))
     if field.nullable:
-        obj_type = [obj_type, 'null']
+        return [obj_type, 'null']
     return obj_type

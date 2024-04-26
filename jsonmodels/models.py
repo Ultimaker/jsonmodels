@@ -1,18 +1,24 @@
-import six
+from typing import Any, Dict, Generator, Tuple, Type, cast
+
+from jsonmodels.types import JSONSchemaProperty
 
 from . import parsers, errors
 from .fields import BaseField
 from .errors import FieldValidationError, ValidatorError, ValidationError
+from .types import Field, JSONSchemaProperty, JSONValue
+
+Values = Dict[str, Any]
+Fields = Tuple[str, Field]
+FieldsWithNames = Tuple[str, str, Field]
 
 
 class JsonmodelMeta(type):
-
-    def __new__(cls, name, bases, attributes):
+    def __new__(cls: Type[JsonmodelMeta], name: str, bases: tuple, attributes: dict) -> type:
         cls.validate_fields(attributes)
         return super(cls, cls).__new__(cls, name, bases, attributes)
 
     @staticmethod
-    def validate_fields(attributes):
+    def validate_fields(attributes: dict[str, Any]) -> None:
         fields = {
             key: value for key, value in attributes.items()
             if isinstance(value, BaseField)
@@ -25,15 +31,15 @@ class JsonmodelMeta(type):
             taken_names.add(structure_name)
 
 
-class Base(six.with_metaclass(JsonmodelMeta, object)):
+class Base(metaclass=JsonmodelMeta):
 
     """Base class for all models."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Values) -> None:
         self._cache_key = _CacheKey()
         self.populate(**kwargs)
 
-    def populate(self, **values):
+    def populate(self, **values: Values) -> None:
         """Populate values to fields. Skip non-existing."""
         values = values.copy()
         fields = list(self.iterate_with_name())
@@ -45,7 +51,7 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
             if name in values:
                 self.set_field(field, name, values.pop(name))
 
-    def get_field(self, field_name):
+    def get_field(self, field_name: str) -> Field:
         """Get field associated with given attribute."""
         for attr_name, field in self:
             if field_name == attr_name:
@@ -53,7 +59,7 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
 
         raise errors.FieldNotFound(field_name)
 
-    def set_field(self, field, field_name, value):
+    def set_field(self, field: Field, field_name: str, value: Any) -> None:
         """ Sets the value of a field. """
         try:
             field.__set__(self, value)
@@ -61,12 +67,12 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
             raise FieldValidationError(type(self).__name__, field_name,
                                        value, error)
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[Fields, None, None]:
         """Iterate through fields and values."""
         for name, field in self.iterate_over_fields():
             yield name, field
 
-    def validate(self):
+    def validate(self) -> None:
         """Explicitly validate all the fields."""
         for name, field in self:
             try:
@@ -77,15 +83,15 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
                                            value, error)
 
     @classmethod
-    def iterate_over_fields(cls):
+    def iterate_over_fields(cls) -> Generator[Fields, None, None]:
         """Iterate through fields as `(attribute_name, field_instance)`."""
         for attr in dir(cls):
             class_attribute = getattr(cls, attr)
             if isinstance(class_attribute, BaseField):
-                yield attr, class_attribute
+                yield attr, cast(Field, class_attribute)
 
     @classmethod
-    def iterate_with_name(cls):
+    def iterate_with_name(cls) -> Generator[FieldsWithNames, None, None]:
         """Iterate over fields, but also give `structure_name`.
 
         Format is `(attribute_name, structure_name, field_instance)`.
@@ -96,16 +102,16 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
             structure_name = field.structure_name(attr_name)
             yield attr_name, structure_name, field
 
-    def to_struct(self):
+    def to_struct(self) -> JSONValue:
         """Cast model to Python structure."""
         return parsers.to_struct(self)
 
     @classmethod
-    def to_json_schema(cls):
+    def to_json_schema(cls) -> JSONSchemaProperty:
         """Generate JSON schema for model."""
         return parsers.to_json_schema(cls)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         attrs = {}
         for name, _ in self:
             try:
@@ -122,17 +128,17 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
             ),
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return '{name} object'.format(name=self.__class__.__name__)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         try:
             return super(Base, self).__setattr__(name, value)
         except ValidatorError as error:
             raise FieldValidationError(type(self).__name__, name,
                                        value, error)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if type(other) is not type(self):
             return False
 
@@ -152,9 +158,9 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
 
         return True
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not (self == other)
 
 
-class _CacheKey(object):
+class _CacheKey:
     """Object to identify model in memory."""

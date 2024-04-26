@@ -5,7 +5,9 @@ import sre_constants
 import six
 import re
 from collections import namedtuple
-from typing import cast, Any, List, Tuple
+from typing import Dict, cast, Any, List, Tuple
+
+from jsonmodels.types import JSONSchemaProperty
 
 six_string_types: List[Any] = list(six.string_types)
 SCALAR_TYPES = cast(Tuple[Any], tuple(six_string_types + [int, float, bool]))
@@ -22,14 +24,14 @@ PYTHON_TO_ECMA_FLAGS = dict(
 PythonRegex = namedtuple('PythonRegex', ['regex', 'flags'])
 
 
-def _normalize_string_type(value):
+def _normalize_string_type(value: Any) -> Any:
     if isinstance(value, six.string_types):
         return six.text_type(value)
     else:
         return value
 
 
-def _compare_dicts(one, two):
+def _compare_dicts(one: Dict, two: Dict) -> bool:
     if len(one) != len(two):
         return False
 
@@ -42,7 +44,7 @@ def _compare_dicts(one, two):
     return True
 
 
-def _compare_lists(one, two):
+def _compare_lists(one: List, two: List) -> bool:
     if len(one) != len(two):
         return False
 
@@ -56,13 +58,13 @@ def _compare_lists(one, two):
     return they_match
 
 
-def _assert_same_types(one, two):
+def _assert_same_types(one: Any, two: Any) -> None:
     if not isinstance(one, type(two)) or not isinstance(two, type(one)):
         raise RuntimeError('Types mismatch! "{type1}" and "{type2}".'.format(
             type1=type(one).__name__, type2=type(two).__name__))
 
 
-def compare_schemas(one, two):
+def compare_schemas(one: JSONSchemaProperty, two: JSONSchemaProperty) -> bool:
     """Compare two structures that represents JSON schemas.
 
     For comparison you can't use normal comparison, because in JSON schema
@@ -85,7 +87,7 @@ def compare_schemas(one, two):
     if isinstance(one, list):
         return _compare_lists(one, two)
     elif isinstance(one, dict):
-        return _compare_dicts(one, two)
+        return _compare_dicts(cast(dict, one), cast(dict, two))
     elif isinstance(one, SCALAR_TYPES):
         return one == two
     elif one is None:
@@ -95,7 +97,7 @@ def compare_schemas(one, two):
             type=type(one).__name__))
 
 
-def is_ecma_regex(regex):
+def is_ecma_regex(regex: str) -> bool:
     """Check if given regex is of type ECMA 262 or not.
 
     :rtype: bool
@@ -112,7 +114,7 @@ def is_ecma_regex(regex):
     return False
 
 
-def convert_ecma_regex_to_python(value):
+def convert_ecma_regex_to_python(value: str) -> PythonRegex:
     """Convert ECMA 262 regex to Python tuple with regex and flags.
 
     If given value is already Python regex it will be returned unchanged.
@@ -136,7 +138,7 @@ def convert_ecma_regex_to_python(value):
     return PythonRegex('/'.join(parts[1:]), result_flags)
 
 
-def convert_python_regex_to_ecma(value, flags=()):
+def convert_python_regex_to_ecma(value: str, flags: List[re.RegexFlag]=[]) -> str:
     """Convert Python regex to ECMA 262 regex.
 
     If given value is already ECMA regex it will be returned unchanged.
@@ -151,6 +153,6 @@ def convert_python_regex_to_ecma(value, flags=()):
         return value
 
     result_flags = [PYTHON_TO_ECMA_FLAGS[f] for f in flags]
-    result_flags = ''.join(result_flags)
+    result_flags_str = ''.join(result_flags)
 
-    return '/{value}/{flags}'.format(value=value, flags=result_flags)
+    return '/{value}/{flags}'.format(value=value, flags=result_flags_str)

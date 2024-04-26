@@ -1,4 +1,6 @@
-
+from typing import Any, Iterable
+from .types import CollectionField
+from typing_extensions import override
 
 class ModelCollection(list):
 
@@ -9,14 +11,16 @@ class ModelCollection(list):
 
     """
 
-    def __init__(self, field):
+    def __init__(self, field: CollectionField) -> None:
         super(ModelCollection, self).__init__()
         self.field = field
 
-    def append(self, value):
+    @override
+    def append(self, value: Any) -> None:
         self.field.validate_single_value(value)
         super(ModelCollection, self).append(value)
 
-    def __setitem__(self, key, value):
+    @override
+    def __setitem__(self, index: Any, value: Any, /) -> None:
         self.field.validate_single_value(value)
-        super(ModelCollection, self).__setitem__(key, value)
+        super(ModelCollection, self).__setitem__(index, value)

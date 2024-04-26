@@ -5,47 +5,38 @@ import datetime
 import re
 import six
 from dateutil.parser import parse
-from typing import Any, List, Generic, Optional, Dict, Sequence, Set, Tuple, TypeVar, Union, Pattern
+from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
+from typing_extensions import Self
+
 
 from .collections import ModelCollection
-from .errors import RequiredFieldError, BadTypeError, AmbiguousTypeError
+from .errors import AmbiguousTypeError, BadTypeError, RequiredFieldError
+from .types import BsonEncodable, EmbedType, Field, JSONValue, Model, Validator, ValidatorFunction, ValidatorObject, Value
 
-MYPY = False
-if MYPY:
-    from .models import Base
+T = TypeVar("T")
 
 # unique marker for "no default value specified". None is not good enough since
 # it is a completely valid default value.
 NotSet = object()
 
-# BSON compatible types, which can be returned by toBsonEncodable.
-BsonEncodable = Union[
-    float, str, object, Dict, List, bytes, bool, datetime.datetime, None,
-    Pattern, int, bytes
-]
 
-
-T = TypeVar("T")
-
-
-class BaseField(Generic[T]):
+class BaseField:
 
     """Base class for all fields."""
 
-    types: Tuple[Any, ...] = ()
-
-    validators: List[Any] = []
-    memory: WeakKeyDictionary
+    types: Tuple[Any, ...] = tuple()
+    validators: List[Validator] = []
 
     def __init__(
-            self,
-            required=False,
-            nullable=False,
-            help_text=None,
-            validators: Optional[List[Any]]=None,
-            default=NotSet,
-            name=None):
-        self.memory = WeakKeyDictionary()
+        self,
+        required: bool = False,
+        nullable: bool = False,
+        help_text: Optional[str] = None,
+        validators: Optional[List[Validator]] = None,
+        default: Value = NotSet,
+        name: Optional[str] = None,
+    ) -> None:
+        self.memory: WeakKeyDictionary = WeakKeyDictionary()
         self.required = required
         self.help_text = help_text
         self.nullable = nullable
@@ -60,49 +51,52 @@ class BaseField(Generic[T]):
     def has_default(self) -> bool:
         return self._default is not NotSet
 
-    def _assign_validators(self, validators) -> None:
-        if validators and not isinstance(validators, list):
-            validators = [validators]
-        self.validators = validators or []
+    def _assign_validators(self, validators: Validator | List[Validator] | None) -> None:
+        if isinstance(validators, list):
+            self.validators = validators
+        elif validators is not None:
+            self.validators = [validators]
+        else:
+            self.validators = []
 
-    def __set__(self, instance: "Base", value: Optional[T]) -> None:
+    def __set__(self, instance: Model, value: Any) -> None:
         self._finish_initialization(type(instance))
         value = self.parse_value(value)
         self.validate(value)
         self.memory[instance._cache_key] = value
 
-    def __get__(self, instance: "Base", owner=None) -> T:
+    def __get__(self, instance: Model, owner: Model | None = None) -> Any:
         if instance is None:
             self._finish_initialization(owner)
-            return self     # type: ignore
+            return self
 
         self._finish_initialization(type(instance))
 
         self._check_value(instance)
         return self.memory[instance._cache_key]
 
-    def _finish_initialization(self, owner) -> None:
+    def _finish_initialization(self, owner: type[Model]) -> None:
         pass
 
-    def _check_value(self, obj):
+    def _check_value(self, obj: Model) -> None:
         if obj._cache_key not in self.memory:
             self.__set__(obj, self.get_default_value())
 
-    def validate_for_object(self, obj):
+    def validate_for_object(self, obj: Model) -> None:
         value = self.__get__(obj)
         self.validate(value)
 
-    def validate(self, value: Optional[T]) -> None:
+    def validate(self, value: Any) -> None:
         self._check_types()
         self._validate_against_types(value)
         self._check_against_required(value)
         self._validate_with_custom_validators(value)
 
-    def _check_against_required(self, value) -> None:
+    def _check_against_required(self, value: Any) -> None:
         if value is None and self.required:
             raise RequiredFieldError()
 
-    def _validate_against_types(self, value) -> None:
+    def _validate_against_types(self, value: Any) -> None:
         if value is not None and not isinstance(value, self.types):
             raise BadTypeError(value, self.types, is_list=False)
 
@@ -112,7 +106,7 @@ class BaseField(Generic[T]):
             raise ValueError(tpl.format(type=type(self).__name__))
 
     @staticmethod
-    def _get_embed_type(value, models):
+    def _get_embed_type(value: Value, models: tuple[EmbedType, ...]) -> EmbedType:
         """
         Tries to guess which of the given models is applicable to the dict.
         :param value: The dict to check.
@@ -130,7 +124,7 @@ class BaseField(Generic[T]):
                    in model.iterate_with_name()
                 } for model in models
                 if hasattr(model, "iterate_with_name")
-            }  # type: Dict[type, Set[str]]
+            }
             matching_models = [model for model, fields in model_fields.items()
                                if fields.issuperset(value)]
 
@@ -141,7 +135,7 @@ class BaseField(Generic[T]):
             return matching_models[0]
         return models[0]
 
-    def toBsonEncodable(self, value) -> BsonEncodable:
+    def toBsonEncodable(self, value: Any) -> BsonEncodable:
         """Optionally return a bson encodable python object.
 
         Returned object should be BSON compatible. By default uses the
@@ -159,30 +153,30 @@ class BaseField(Generic[T]):
         """
         return self.to_struct(value=value)
 
-    def to_struct(self, value):
-        """Cast value to Python dict."""
-        return value
+    def to_struct(self, value: Any) -> JSONValue:
+        """Cast value to Python structure."""
+        return cast(JSONValue, value)
 
-    def parse_value(self, value: Optional[Any]) -> Optional[T]:
+    def parse_value(self, value: Any) -> T | None:
         """Parse value from primitive to desired format.
 
         Each field can parse value to form it wants it to be (like string or
         int).
 
         """
-        return value
+        return cast( T | None, value)
 
-    def _validate_with_custom_validators(self, value):
+    def _validate_with_custom_validators(self, value: Any) -> None:
         if value is None and self.nullable:
             return
 
         for validator in self.validators:
             try:
-                validator.validate(value)
+                cast(ValidatorObject, validator).validate(value)
             except AttributeError:
-                validator(value)
+                cast(ValidatorFunction, validator)(value)
 
-    def get_default_value(self):
+    def get_default_value(self) -> Any:
         """Get default value for field.
 
         Each field can specify its default.
@@ -190,35 +184,35 @@ class BaseField(Generic[T]):
         """
         return self._default if self.has_default else None
 
-    def _validate_name(self):
+    def _validate_name(self) -> None:
         if self.name is None:
             return
         if not re.match(r'^[A-Za-z_](([\w\-]*)?\w+)?$', self.name):
             raise ValueError('Wrong name', self.name)
 
-    def structure_name(self, default):
+    def structure_name(self, default: str) -> str:
         return self.name if self.name is not None else default
 
-    def structue_name(self, default):
+    def structue_name(self, default: str) -> str:
         warnings.warn("`structue_name` is deprecated, please use "
                       "`structure_name`")
         return self.structure_name(default)
 
 
-class StringField(BaseField[str]):
+class StringField(BaseField):
 
     """String field."""
 
     types: Tuple[Any, ...] = six.string_types
 
 
-class IntField(BaseField[int]):
+class IntField(BaseField):
 
     """Integer field."""
 
     types: Tuple[Any, ...] = (int,)
 
-    def parse_value(self, value):
+    def parse_value(self, value: Any) -> Any:
         """Cast value to `int`, e.g. from string or long"""
         parsed = super(IntField, self).parse_value(value)
         if parsed is None:
@@ -229,20 +223,20 @@ class IntField(BaseField[int]):
             raise BadTypeError(value, types=(int,), is_list=False)
 
 
-class FloatField(BaseField[float]):
+class FloatField(BaseField):
 
     """Float field."""
 
     types: Tuple[Any, ...] = (float, int)
 
 
-class BoolField(BaseField[bool]):
+class BoolField(BaseField):
 
     """Bool field."""
 
     types: Tuple[Any, ...] = (bool,)
 
-    def parse_value(self, value):
+    def parse_value(self, value: Value) -> Any:
         """Cast value to `bool`."""
         parsed = super(BoolField, self).parse_value(value)
         return bool(parsed) if parsed is not None else None
@@ -251,16 +245,16 @@ class BoolField(BaseField[bool]):
 I = TypeVar("I")
 
 
-class ListField(BaseField[List[I]]):
+class ListField(BaseField):
 
     """List field."""
 
     types: Tuple[Any, ...] = (list, tuple)
-    items_types: Tuple[Any, ...]
+    items_types: tuple[EmbedType, ...]
     item_validators: List[Any]
 
-    def __init__(self, items_types: Optional[List[Any]]=None, item_validators: Union[Any, List[Any]]=[], omit_empty=False,
-                 *args, **kwargs):
+    def __init__(self, items_types: Optional[tuple[EmbedType, ...]]=None, item_validators: Union[Any, List[Any]]=[],
+                 omit_empty: bool=False, *args: Any, **kwargs: Any):
         """Init.
 
         `ListField` is **always not required**. If you want to control number
@@ -277,20 +271,17 @@ class ListField(BaseField[List[I]]):
         self.required = False
         self._omit_empty = omit_empty
 
-    def get_default_value(self):
+    def get_default_value(self) -> Any:
         default = super(ListField, self).get_default_value()
         if default is None:
             return ModelCollection(self)
         return default
 
-    def _assign_types(self, items_types):
+    def _assign_types(self, items_types: tuple[EmbedType, ...] | None) -> None:
         if items_types:
-            try:
-                self.items_types = tuple(items_types)
-            except TypeError:
-                self.items_types = items_types,
+            self.items_types = tuple(items_types)
         else:
-            self.items_types = tuple()
+            self.items_types = ()
 
         types = []
         for type_ in self.items_types:
@@ -300,13 +291,13 @@ class ListField(BaseField[List[I]]):
                 types.append(type_)
         self.items_types = tuple(types)
 
-    def validate(self, value):
+    def validate(self, value: Any) -> None:
         super(ListField, self).validate(value)
 
         for item in value:
             self.validate_single_value(item)
 
-    def validate_single_value(self, value):
+    def validate_single_value(self, value: Any) -> None:
         for validator in self.item_validators:
             try:
                 validator.validate(value)
@@ -317,9 +308,9 @@ class ListField(BaseField[List[I]]):
             return
 
         if not isinstance(value, self.items_types):
-            raise BadTypeError(value, self.items_types, is_list=True)
+            raise BadTypeError(value, tuple(self.items_types), is_list=True)
 
-    def parse_value(self, values):
+    def parse_value(self, values: Any) -> Any:
         """Cast value to proper collection."""
         result = self.get_default_value()
 
@@ -331,16 +322,16 @@ class ListField(BaseField[List[I]]):
 
         return [self._cast_value(value) for value in values]
 
-    def _cast_value(self, value):
+    def _cast_value(self, value: Any) -> Any:
         if isinstance(value, self.items_types):
             return value
         elif isinstance(value, dict):
             model_type = self._get_embed_type(value, self.items_types)
             return model_type(**value)
         else:
-            raise BadTypeError(value, self.items_types, is_list=True)
+            raise BadTypeError(value, tuple(self.items_types), is_list=True)
 
-    def _finish_initialization(self, owner):
+    def _finish_initialization(self, owner: type[Model]) -> None:
         super(ListField, self)._finish_initialization(owner)
 
         types = []
@@ -351,14 +342,14 @@ class ListField(BaseField[List[I]]):
                 types.append(item_type)
         self.items_types = tuple(types)
 
-    def _elem_to_struct(self, value):
+    def _elem_to_struct(self, value: Value) -> Value | dict[str, Value]:
         try:
             return value.to_struct()
         except AttributeError:
             return value
 
-    def to_struct(self, values):
-        return [self._elem_to_struct(v) for v in values] \
+    def to_struct(self, values: Any) -> JSONValue:
+        return [self._elem_to_struct(v) for v in cast(List, values)] \
             if values or not self._omit_empty else None
 
 
@@ -367,7 +358,7 @@ class DerivedListField(ListField):
     A list field that has another field for its items.
     """
 
-    def __init__(self, field: BaseField, *args, **kwargs):
+    def __init__(self, field: BaseField, *args: Any, **kwargs: Any):
         """
         :param field: The field that will be in each of the items of the list.
         :param help_text: The help text of the list field.
@@ -382,16 +373,16 @@ class DerivedListField(ListField):
             *args, **fixed_kwargs,
         )
 
-    def to_struct(self, values: List[Any]) -> Optional[List[Any]]:
+    def to_struct(self, values: Any) -> JSONValue:
         """
         Converts the list to its output format.
         :param values: The values in the list.
         :return: The converted values.
         """
-        return [self._field.to_struct(value) for value in values] \
+        return [self._field.to_struct(value) for value in cast(List, values)] \
             if values or not self._omit_empty else None
 
-    def parse_value(self, values: Optional[Any]) -> Optional[List[Any]]:
+    def parse_value(self, values: Any) -> Any:
         """
         Converts the list to its internal format.
         :param values: The values in the list.
@@ -418,23 +409,23 @@ class EmbeddedField(BaseField):
 
     """Field for embedded models."""
 
-    def __init__(self, model_types, *args, **kwargs):
+    def __init__(self, model_types: tuple[EmbedType | str, ...], *args: Any, **kwargs: Any) -> None:
         self._assign_model_types(model_types)
         super(EmbeddedField, self).__init__(*args, **kwargs)
 
-    def _assign_model_types(self, model_types):
+    def _assign_model_types(self, model_types: tuple[EmbedType | str, ...]) -> None:
         if not isinstance(model_types, (list, tuple)):
             model_types = (model_types,)
 
-        types = []
+        types: List[EmbedType | _LazyType] = []
         for type_ in model_types:
             if isinstance(type_, six.string_types):
                 types.append(_LazyType(type_))
             else:
-                types.append(type_)
+                types.append(cast(EmbedType, type_))
         self.types = tuple(types)
 
-    def _finish_initialization(self, owner):
+    def _finish_initialization(self, owner: type[Model]) -> None:
         super(EmbeddedField, self)._finish_initialization(owner)
         types = []
         for model_type in self.types:
@@ -445,26 +436,26 @@ class EmbeddedField(BaseField):
 
         self.types = tuple(types)
 
-    def validate(self, value):
+    def validate(self, value: Any) -> None:
         super(EmbeddedField, self).validate(value)
         try:
             value.validate()
         except AttributeError:
             pass
 
-    def parse_value(self, value):
+    def parse_value(self, value: Any) -> Any:
         """Parse value to proper model type."""
         if not isinstance(value, dict):
-            return value
+            return cast(EmbedType, value)
 
         embed_type = self._get_embed_type(value, self.types)
         return embed_type(**value)
 
-    def to_struct(self, value):
-        return value.to_struct()
+    def to_struct(self, value: Any) -> JSONValue:
+        return cast(Model, value).to_struct()
 
 
-class MapField(BaseField[Dict[Any, Any]]):
+class MapField(BaseField):
     """
     Model field that keeps a mapping between two other fields.
     It is basically a dictionary with key and values being separate fields.
@@ -476,8 +467,8 @@ class MapField(BaseField[Dict[Any, Any]]):
     """
     types: Tuple[Any, ...] = (dict,)
 
-    def __init__(self, key_field: BaseField, value_field: BaseField,
-                 **kwargs):
+    def __init__(self, key_field: Field, value_field: Field,
+                 **kwargs: Any):
         """
         :param key_field: The field that is responsible for converting and
             validating the keys in this mapping.
@@ -489,7 +480,7 @@ class MapField(BaseField[Dict[Any, Any]]):
         self._key_field = key_field
         self._value_field = value_field
 
-    def _finish_initialization(self, owner):
+    def _finish_initialization(self, owner: type[Model]) -> None:
         """
         Completes the initialization of the fields, allowing for lazy refs.
         """
@@ -504,7 +495,7 @@ class MapField(BaseField[Dict[Any, Any]]):
             return dict()
         return default
 
-    def parse_value(self, values: Optional[Any]) -> Optional[Dict[Any, Any]]:
+    def parse_value(self, values: Any) -> Any:
         """ Parses the given values into a new dict. """
         values = super().parse_value(values)
         if values is None:
@@ -516,16 +507,16 @@ class MapField(BaseField[Dict[Any, Any]]):
         ]
         return type(values)(items)  # Preserves OrderedDict
 
-    def to_struct(self, values: Dict[Any, Any]) -> Dict[Any, Any]:
+    def to_struct(self, values: Any) -> JSONValue:
         """ Casts the field values into a dict. """
         items = [
             (self._key_field.to_struct(key),
              self._value_field.to_struct(value))
-            for key, value in values.items()
+            for key, value in cast(Dict, values).items()
         ]
-        return type(values)(items)  # Preserves OrderedDict
+        return cast(JSONValue, type(values)(items))  # Preserves OrderedDict
 
-    def validate(self, values: Optional[Dict[Any, Any]]) -> None:
+    def validate(self, values: Any) -> None:
         """
         Validates all keys and values in the map field.
         :param values: The values in the mapping.
@@ -538,17 +529,16 @@ class MapField(BaseField[Dict[Any, Any]]):
             self._value_field.validate(value)
 
 
-class _LazyType(object):
-
-    def __init__(self, path):
+class _LazyType:
+    def __init__(self, path: str) -> None:
         self.path = path
 
-    def evaluate(self, base_cls):
+    def evaluate(self, base_cls: type[Model]) -> Any:
         module, type_name = _evaluate_path(self.path, base_cls)
         return _import(module, type_name)
 
 
-def _evaluate_path(relative_path, base_cls):
+def _evaluate_path(relative_path: str, base_cls: type[Model]) -> tuple[Any, str]:
     base_module = base_cls.__module__
 
     modules = _get_modules(relative_path, base_module)
@@ -560,7 +550,7 @@ def _evaluate_path(relative_path, base_cls):
     return module, type_name
 
 
-def _get_modules(relative_path, base_module):
+def _get_modules(relative_path: str, base_module: str) -> Any:
     canonical_path = relative_path.lstrip('.')
     canonical_modules = canonical_path.split('.')
 
@@ -575,7 +565,7 @@ def _get_modules(relative_path, base_module):
     return parent_modules[:parents_amount * -1] + canonical_modules
 
 
-def _import(module_name, type_name):
+def _import(module_name: str, type_name: str) -> Any:
     module = __import__(module_name, fromlist=[type_name])
     try:
         return getattr(module, type_name)
@@ -590,7 +580,9 @@ class TimeField(StringField):
 
     types: Tuple[Any, ...] = (datetime.time,)
 
-    def __init__(self, str_format=None, *args, **kwargs):
+    def __init__(
+        self, str_format: Optional[str] = None, *args: Any, **kwargs: Any
+    ) -> None:
         """Init.
 
         :param str str_format: Format to cast time to (if `None` - casting to
@@ -600,13 +592,14 @@ class TimeField(StringField):
         self.str_format = str_format
         super(TimeField, self).__init__(*args, **kwargs)
 
-    def to_struct(self, value):
+    def to_struct(self, value: Any) -> JSONValue:
         """Cast `time` object to string."""
+        datetime_value = cast(datetime.time, value)
         if self.str_format:
-            return value.strftime(self.str_format)
-        return value.isoformat()
+            return datetime_value.strftime(self.str_format)
+        return datetime_value.isoformat()
 
-    def parse_value(self, value):
+    def parse_value(self, value: Any) -> Any:
         """Parse string into instance of `time`."""
         if value is None:
             return value
@@ -622,7 +615,9 @@ class DateField(StringField):
     types: Tuple[Any, ...] = (datetime.date,)
     default_format = '%Y-%m-%d'
 
-    def __init__(self, str_format=None, *args, **kwargs):
+    def __init__(
+        self, str_format: Optional[str] = None, *args: Any, **kwargs: Any
+    ) -> None:
         """Init.
 
         :param str str_format: Format to cast date to (if `None` - casting to
@@ -632,13 +627,14 @@ class DateField(StringField):
         self.str_format = str_format
         super(DateField, self).__init__(*args, **kwargs)
 
-    def to_struct(self, value):
+    def to_struct(self, value: Any) -> JSONValue:
         """Cast `date` object to string."""
+        date_value = cast(datetime.date, value)
         if self.str_format:
-            return value.strftime(self.str_format)
-        return value.strftime(self.default_format)
+            return date_value.strftime(self.str_format)
+        return date_value.strftime(self.default_format)
 
-    def parse_value(self, value):
+    def parse_value(self, value: Any) -> Any:
         """Parse string into instance of `date`."""
         if value is None:
             return value
@@ -653,7 +649,9 @@ class DateTimeField(StringField):
 
     types: Tuple[Any, ...] = (datetime.datetime,)
 
-    def __init__(self, str_format=None, *args, **kwargs):
+    def __init__(
+        self, str_format: Optional[str] = None, *args: Any, **kwargs: Any
+    ) -> None:
         """Init.
 
         :param str str_format: Format to cast datetime to (if `None` - casting
@@ -663,21 +661,22 @@ class DateTimeField(StringField):
         self.str_format = str_format
         super(DateTimeField, self).__init__(*args, **kwargs)
 
-    def to_struct(self, value):
+    def to_struct(self, value: Any) -> JSONValue:
         """Cast `datetime` object to string."""
+        datetime_value = cast(datetime.datetime, value)
         if self.str_format:
-            return value.strftime(self.str_format)
-        return value.isoformat()
+            return datetime_value.strftime(self.str_format)
+        return datetime_value.isoformat()
 
-    def toBsonEncodable(self, value: datetime.datetime) -> datetime.datetime:
+    def toBsonEncodable(self, value: Any) -> BsonEncodable:
         """
         Keep datetime object a datetime object, since pymongo supports that.
         """
         if not isinstance(value, self.types):
             raise BadTypeError(value, self.types, is_list=False)
-        return value
+        return cast(BsonEncodable, value)
 
-    def parse_value(self, value):
+    def parse_value(self, value: Any) -> Any:
         """Parse string into instance of `datetime`."""
         if isinstance(value, datetime.datetime):
             return value
@@ -687,17 +686,17 @@ class DateTimeField(StringField):
             return None
 
 
-class GenericField(BaseField[Any]):
+class GenericField(BaseField):
     """
     Field that supports any kind of value, converting models to their correct
     struct, keeping ordered dictionaries in their original order.
     """
     types: Tuple[Any, ...] = (any,)
 
-    def _validate_against_types(self, value) -> None:
+    def _validate_against_types(self, value: Value) -> None:
         pass
 
-    def to_struct(self, values: Any) -> Any:
+    def to_struct(self, values: Any) -> JSONValue:
         """ Casts value to Python structure. """
         from .models import Base
         if isinstance(values, Base):
@@ -711,4 +710,4 @@ class GenericField(BaseField[Any]):
                      for key, value in values.items()]
             return type(values)(items)  # preserves OrderedDict
 
-        return values
+        return cast(JSONValue, values)

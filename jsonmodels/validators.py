@@ -1,18 +1,19 @@
 """Predefined validators."""
 import re
+from typing import Sized, cast
 
 from six.moves import reduce
 
 from .errors import MinValidationError, MaxValidationError, BadTypeError, \
     RegexError, MinLengthError, MaxLengthError, EnumError
 from . import utilities
-
+from .types import JSONSchemaProperty
 
 class Min(object):
 
     """Validator for minimum value."""
 
-    def __init__(self, minimum_value, exclusive=False):
+    def __init__(self, minimum_value: int | float, exclusive: bool = False) -> None:
         """Init.
 
         :param minimum_value: Minimum value for validator.
@@ -23,13 +24,13 @@ class Min(object):
         self.minimum_value = minimum_value
         self.exclusive = exclusive
 
-    def validate(self, value):
+    def validate(self, value: int | float) -> None:
         """Validate value."""
         if value < self.minimum_value \
                 or (self.exclusive and value == self.minimum_value):
             raise MinValidationError(value, self.minimum_value, self.exclusive)
 
-    def modify_schema(self, field_schema):
+    def modify_schema(self, field_schema: JSONSchemaProperty) -> None:
         """Modify field schema."""
         field_schema['minimum'] = self.minimum_value
         if self.exclusive:
@@ -40,7 +41,7 @@ class Max(object):
 
     """Validator for maximum value."""
 
-    def __init__(self, maximum_value, exclusive=False):
+    def __init__(self, maximum_value: int | float, exclusive: bool = False) -> None:
         """Init.
 
         :param maximum_value: Maximum value for validator.
@@ -51,13 +52,13 @@ class Max(object):
         self.maximum_value = maximum_value
         self.exclusive = exclusive
 
-    def validate(self, value):
+    def validate(self, value: int | float) -> None:
         """Validate value."""
         if value > self.maximum_value \
                 or (self.exclusive and value == self.maximum_value):
             raise MaxValidationError(value, self.maximum_value, self.exclusive)
 
-    def modify_schema(self, field_schema):
+    def modify_schema(self, field_schema: JSONSchemaProperty) -> None:
         """Modify field schema."""
         field_schema['maximum'] = self.maximum_value
         if self.exclusive:
@@ -73,7 +74,7 @@ class Regex(object):
         'multiline': re.M,
     }
 
-    def __init__(self, pattern, custom_error=None, **flags):
+    def __init__(self, pattern: str, custom_error: Exception | None=None, **flags: re._FlagsType) -> None:
         """Init.
 
         Note, that if given pattern is ECMA regex, given flags will be
@@ -98,7 +99,7 @@ class Regex(object):
             self.flags = [self.FLAGS[key] for key, value in flags.items()
                           if key in self.FLAGS and value]
 
-    def validate(self, value):
+    def validate(self, value: str) -> None:
         """Validate value."""
         flags = self._calculate_flags()
 
@@ -112,10 +113,10 @@ class Regex(object):
                 raise self.custom_error
             raise RegexError(value, self.pattern)
 
-    def _calculate_flags(self):
+    def _calculate_flags(self) -> re._FlagsType:
         return reduce(lambda x, y: x | y, self.flags, 0)
 
-    def modify_schema(self, field_schema):
+    def modify_schema(self, field_schema: JSONSchemaProperty) -> None:
         """Modify field schema."""
         field_schema['pattern'] = utilities.convert_python_regex_to_ecma(
             self.pattern, self.flags
@@ -126,7 +127,7 @@ class Length(object):
 
     """Validator for length."""
 
-    def __init__(self, minimum_value=None, maximum_value=None):
+    def __init__(self, minimum_value: int | None = None, maximum_value: int | None = None) -> None:
         """Init.
 
         Note that if no `minimum_value` neither `maximum_value` will be
@@ -144,7 +145,7 @@ class Length(object):
         self.minimum_value = minimum_value
         self.maximum_value = maximum_value
 
-    def validate(self, value):
+    def validate(self, value: Sized) -> None:
         """Validate value."""
         len_ = len(value)
 
@@ -154,24 +155,28 @@ class Length(object):
         if self.maximum_value is not None and len_ > self.maximum_value:
             raise MaxLengthError(value, self.maximum_value)
 
-    def modify_schema(self, field_schema):
+    def modify_schema(self, field_schema: JSONSchemaProperty) -> None:
         """Modify field schema."""
         is_array = field_schema.get('type') == 'array'
 
         if self.minimum_value:
-            key = 'minItems' if is_array else 'minLength'
-            field_schema[key] = self.minimum_value
+            if is_array:
+                field_schema['minItems'] = self.minimum_value
+            else:
+                field_schema['minLength'] = self.minimum_value
 
         if self.maximum_value:
-            key = 'maxItems' if is_array else 'maxLength'
-            field_schema[key] = self.maximum_value
+            if is_array:
+                field_schema['maxItems'] = self.maximum_value
+            else:
+                field_schema['maxLength'] = self.maximum_value
 
 
 class Enum(object):
 
     """Validator for enums."""
 
-    def __init__(self, *choices):
+    def __init__(self, *choices: str) -> None:
         """Init.
 
         :param [] choices: Valid choices for the field.
@@ -179,9 +184,9 @@ class Enum(object):
 
         self.choices = list(choices)
 
-    def validate(self, value):
+    def validate(self, value: str) -> None:
         if value not in self.choices:
             raise EnumError(value, self.choices)
 
-    def modify_schema(self, field_schema):
+    def modify_schema(self, field_schema: JSONSchemaProperty) -> None:
         field_schema['enum'] = self.choices
