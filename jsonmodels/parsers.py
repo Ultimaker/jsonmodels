@@ -3,7 +3,7 @@ import inspect
 from typing import Any, cast
 
 from . import builders, errors, fields
-from .types import Builder, CollectionField, Field, JSONSchemaProperty, JSONSchemaTypeName, JSONValue, Model
+from .types import Builder, Field, JSONSchemaProperty, JSONSchemaTypeName, JSONValue, Model
 
 
 def to_struct(model: Model) -> JSONValue:

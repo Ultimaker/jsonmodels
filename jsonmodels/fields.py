@@ -5,15 +5,12 @@ import datetime
 import re
 import six
 from dateutil.parser import parse
-from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar, Union, cast
-from typing_extensions import Self
-
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union, cast
 
 from .collections import ModelCollection
 from .errors import AmbiguousTypeError, BadTypeError, RequiredFieldError
 from .types import BsonEncodable, EmbedType, Field, JSONValue, Model, Validator, ValidatorFunction, ValidatorObject, Value
 
-T = TypeVar("T")
 
 # unique marker for "no default value specified". None is not good enough since
 # it is a completely valid default value.
@@ -157,14 +154,14 @@ class BaseField:
         """Cast value to Python structure."""
         return cast(JSONValue, value)
 
-    def parse_value(self, value: Any) -> T | None:
+    def parse_value(self, value: Any) -> Any:
         """Parse value from primitive to desired format.
 
         Each field can parse value to form it wants it to be (like string or
         int).
 
         """
-        return cast( T | None, value)
+        return value
 
     def _validate_with_custom_validators(self, value: Any) -> None:
         if value is None and self.nullable:
@@ -253,7 +250,7 @@ class ListField(BaseField):
     items_types: tuple[EmbedType, ...]
     item_validators: List[Any]
 
-    def __init__(self, items_types: Optional[tuple[EmbedType, ...]]=None, item_validators: Union[Any, List[Any]]=[],
+    def __init__(self, items_types: EmbedType | tuple[EmbedType, ...] | List[EmbedType] | None=None, item_validators: Union[Any, List[Any]]=[],
                  omit_empty: bool=False, *args: Any, **kwargs: Any):
         """Init.
 
@@ -277,9 +274,12 @@ class ListField(BaseField):
             return ModelCollection(self)
         return default
 
-    def _assign_types(self, items_types: tuple[EmbedType, ...] | None) -> None:
+    def _assign_types(self, items_types: EmbedType | tuple[EmbedType, ...] | List[EmbedType] | None) -> None:
         if items_types:
-            self.items_types = tuple(items_types)
+            if isinstance(items_types, (tuple, list)):
+                self.items_types = tuple(items_types)
+            else:
+                self.items_types = (items_types, )
         else:
             self.items_types = ()
 
@@ -409,11 +409,11 @@ class EmbeddedField(BaseField):
 
     """Field for embedded models."""
 
-    def __init__(self, model_types: tuple[EmbedType | str, ...], *args: Any, **kwargs: Any) -> None:
+    def __init__(self, model_types: EmbedType | str | tuple[EmbedType | str, ...], *args: Any, **kwargs: Any) -> None:
         self._assign_model_types(model_types)
         super(EmbeddedField, self).__init__(*args, **kwargs)
 
-    def _assign_model_types(self, model_types: tuple[EmbedType | str, ...]) -> None:
+    def _assign_model_types(self, model_types: EmbedType | str | tuple[EmbedType | str, ...]) -> None:
         if not isinstance(model_types, (list, tuple)):
             model_types = (model_types,)
 

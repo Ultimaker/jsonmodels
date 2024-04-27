@@ -205,7 +205,7 @@ def test_automatic_model_detection() -> None:
 
     class Person(models.Base):
 
-        names = fields.ListField[Union[str, int, float, bool, FullName, Car]](
+        names = fields.ListField(
             [str, int, float, bool, FullName, Car],
             help_text='A list of names.',
         )

@@ -1,6 +1,6 @@
 """Predefined validators."""
 import re
-from typing import Sized, cast
+from typing import Sized
 
 from six.moves import reduce
 

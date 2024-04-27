@@ -1,6 +1,6 @@
 from typing import Any, List, Sized, Tuple, Type
 
-from .types import EmbedType, Model
+from .types import EmbedType
 
 
 class ValidationError(RuntimeError):
