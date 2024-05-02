@@ -1,4 +1,3 @@
-
 from models import person
 
 reveal_type(person.name)

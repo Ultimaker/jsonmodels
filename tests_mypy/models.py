@@ -21,7 +21,14 @@ class Person(models.Base):
     address = fields.EmbeddedField(model_types=Address)
     transport = fields.EmbeddedField(model_types=(Car, Boat))
     pet_names = fields.ListField(items_types=str)
-    nicknames = fields.DerivedListField(fields.StringField())
+    nicknames = fields.DerivedListField(field=fields.StringField())
+    alias_names = fields.DerivedListField(fields.StringField())
+
+class CarRegistry(models.Base):
+    registry = fields.MapField(key_field=fields.StringField(), value_field=fields.StringField())
+    any_random = fields.GenericField()
+
 
 person = Person()
 address = Address()
+car_registry = CarRegistry()

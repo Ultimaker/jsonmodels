@@ -2,29 +2,68 @@ from typing import Callable, List, Type
 import mypy
 from mypy.plugin import Plugin, AttributeContext, FunctionContext
 from mypy.types import Type as MypyType
+from mypy.nodes import TypeInfo
+
+
+JSONMODEL_TYPE = [
+    "jsonmodels.fields.StringField",
+    "jsonmodels.fields.IntField",
+    "jsonmodels.fields.FloatField",
+    "jsonmodels.fields.BoolField",
+    "jsonmodels.fields.TimeField",
+    "jsonmodels.fields.DateField",
+    "jsonmodels.fields.DateTimeField",
+    "jsonmodels.fields.EmbeddedField",
+    "jsonmodels.fields.ListField",
+    "jsonmodels.fields.DerivedListField",
+    "jsonmodels.fields.MapField",
+    "jsonmodels.fields.GenericField"
+]
+
 
 class JSONModelsPlugin(Plugin):
     def get_function_hook(self, fullname: str) -> Callable[[AttributeContext], Type] | None:
-        if fullname == "jsonmodels.fields.StringField":
+        jsonmodel_fullname: str
+
+        sym = self.lookup_fully_qualified(fullname)
+        if sym is None:
+            return None
+        node = sym.node
+        if not isinstance(node, TypeInfo):
+            return None
+
+        # Find a known jsonmodel field type in this type's class hierarchy.
+        for node in node.mro:
+            if node.fullname in JSONMODEL_TYPE:
+                jsonmodel_fullname = node.fullname
+                break
+        else:
+            return None
+
+        if jsonmodel_fullname == "jsonmodels.fields.StringField":
             return self._string_field_callback
-        if fullname == "jsonmodels.fields.IntField":
+        if jsonmodel_fullname == "jsonmodels.fields.IntField":
             return self._int_field_callback
-        if fullname == "jsonmodels.fields.FloatField":
+        if jsonmodel_fullname == "jsonmodels.fields.FloatField":
             return self._float_field_callback
-        if fullname == "jsonmodels.fields.BoolField":
+        if jsonmodel_fullname == "jsonmodels.fields.BoolField":
             return self._bool_field_callback
-        if fullname == "jsonmodels.fields.TimeField":
+        if jsonmodel_fullname == "jsonmodels.fields.TimeField":
             return self._time_field_callback
-        if fullname == "jsonmodels.fields.DateField":
+        if jsonmodel_fullname == "jsonmodels.fields.DateField":
             return self._date_field_callback
-        if fullname == "jsonmodels.fields.DateTimeField":
+        if jsonmodel_fullname == "jsonmodels.fields.DateTimeField":
             return self._datetime_field_callback
-        if fullname == "jsonmodels.fields.EmbeddedField":
+        if jsonmodel_fullname == "jsonmodels.fields.EmbeddedField":
             return self._embedded_field_callback
-        if fullname == "jsonmodels.fields.ListField":
+        if jsonmodel_fullname == "jsonmodels.fields.ListField":
             return self._list_field_callback
-        if fullname == "jsonmodels.fields.DerivedListField":
-            return self._list_field_callback
+        if jsonmodel_fullname == "jsonmodels.fields.DerivedListField":
+            return self._derived_list_field_callback
+        if jsonmodel_fullname == "jsonmodels.fields.MapField":
+            return self._map_field_callback
+        if jsonmodel_fullname == "jsonmodels.fields.GenericField":
+            return self._generic_field_callback
 
         return None
 
@@ -96,6 +135,28 @@ class JSONModelsPlugin(Plugin):
         item_type = self._get_type_from_arg(ctx, "items_types")
         list_type = ctx.api.named_generic_type("list", [item_type])
         return self._wrap_nullable(ctx, list_type)
+
+    def _get_type_from_arg_type(self, ctx: FunctionContext, arg_name: str) -> MypyType:
+        try:
+            model_types_index = ctx.callee_arg_names.index(arg_name)
+        except ValueError:
+            return mypy.types.NoneType()
+
+        return ctx.arg_types[model_types_index][0]
+
+    def _derived_list_field_callback(self, ctx: FunctionContext) -> MypyType:
+        item_type = self._get_type_from_arg_type(ctx, "field")
+        list_type = ctx.api.named_generic_type("list", [item_type])
+        return self._wrap_nullable(ctx, list_type)
+
+    def _map_field_callback(self, ctx: FunctionContext) -> MypyType:
+        key_type = self._get_type_from_arg_type(ctx, "key_field")
+        value_type = self._get_type_from_arg_type(ctx, "value_field")
+        list_type = ctx.api.named_generic_type("dict", [key_type, value_type])
+        return self._wrap_nullable(ctx, list_type)
+
+    def _generic_field_callback(self, ctx: FunctionContext) -> MypyType:
+        return mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
 
 def plugin(version: str):
     return JSONModelsPlugin

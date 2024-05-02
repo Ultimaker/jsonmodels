@@ -10,9 +10,6 @@ Value = Any
 JSONObject = Dict[str, "JSONValue"]
 JSONValue = Union[None, bool, str, float, int, List["JSONValue"], JSONObject]
 
-# JSONSchema = JSONValue
-# JSONSchemaDict = JSONObject
-
 JSONSchemaBasicTypeName = Literal["string"]  | Literal["number"] | Literal["boolean"] | Literal["object"] | Literal["array"] | Literal["null"]
 JSONSchemaTypeName = JSONSchemaBasicTypeName | List[JSONSchemaBasicTypeName | Literal["null"]]
 
@@ -155,3 +152,5 @@ class Model(Protocol):
         ...
 
 EmbedType = Union[type[str], type[int], type[float], type[bool], type[list], type[dict], type[Model]]
+
+PrimitiveTypeInstance = str | int | float | bool

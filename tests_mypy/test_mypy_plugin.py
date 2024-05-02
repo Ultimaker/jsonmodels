@@ -42,6 +42,7 @@ def test_file(directory: str, file_name: str) -> bool:
 def main() -> None:
     directory = '.'
     files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.startswith("case_")]
+    files.sort()
 
     for file_name in files:
         test_file(directory, file_name)

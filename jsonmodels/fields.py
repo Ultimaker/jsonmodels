@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union, cast
 
 from .collections import ModelCollection
 from .errors import AmbiguousTypeError, BadTypeError, RequiredFieldError
-from .types import BsonEncodable, EmbedType, Field, JSONValue, Model, Validator, ValidatorFunction, ValidatorObject, Value
+from .types import BsonEncodable, EmbedType, Field, JSONValue, Model, PrimitiveTypeInstance, Validator, ValidatorFunction, ValidatorObject, Value
 
 
 # unique marker for "no default value specified". None is not good enough since
@@ -358,12 +358,18 @@ class DerivedListField(ListField):
     A list field that has another field for its items.
     """
 
-    def __init__(self, field: BaseField, *args: Any, **kwargs: Any):
+    def __init__(self, field: BaseField | PrimitiveTypeInstance, *args: Any, **kwargs: Any):
         """
-        :param field: The field that will be in each of the items of the list.
+        :param field: The field instance that will be in each of the items of the list.
         :param help_text: The help text of the list field.
         :param validators: The validators for the list field.
         """
+        # Note: It is a bit of a hack but the signature allows many primitive
+        # types even though in reality we only accept BaseField instances.
+        # The extra types are for the type checker and our Mypy plugin.
+        if not isinstance(field, BaseField):
+            raise BadTypeError(field, (BaseField,), is_list=False)
+
         self._field = field
 
         fixed_kwargs = kwargs.copy()
@@ -467,7 +473,7 @@ class MapField(BaseField):
     """
     types: Tuple[Any, ...] = (dict,)
 
-    def __init__(self, key_field: Field, value_field: Field,
+    def __init__(self, key_field: BaseField | PrimitiveTypeInstance, value_field: BaseField | PrimitiveTypeInstance,
                  **kwargs: Any):
         """
         :param key_field: The field that is responsible for converting and
@@ -477,7 +483,16 @@ class MapField(BaseField):
         :param kwargs: Other keyword arguments to the base class.
         """
         super(MapField, self).__init__(**kwargs)
+
+        # Note: It is a bit of a hack but the signature allows many primitive
+        # types even though in reality we only accept BaseField instances.
+        # The extra types are for the type checker and our Mypy plugin.
+        if not isinstance(key_field, BaseField):
+            raise BadTypeError(key_field, (BaseField,), is_list=False)
         self._key_field = key_field
+
+        if not isinstance(value_field, BaseField):
+            raise BadTypeError(value_field, (BaseField,), is_list=False)
         self._value_field = value_field
 
     def _finish_initialization(self, owner: type[Model]) -> None:
