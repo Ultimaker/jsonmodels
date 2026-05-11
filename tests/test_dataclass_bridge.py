@@ -30,6 +30,7 @@ def test_model1():
     alan.age = 34
     assert {'name': 'Alan', 'surname': 'Wake', 'age': 34} == alan.to_struct()
 
+
 def test_required():
 
     @dataclass
@@ -45,6 +46,7 @@ def test_required():
 
     alan.name = 'Chuck'
     alan.validate()
+
 
 def test_list_field_types():
 
@@ -72,14 +74,17 @@ def test_list_field_types():
     #     viper.wheels.append(Wheel2)
     assert viper.to_struct() == {'wheels': [{}, {}]}
 
+
 def test_list_omit_empty():
 
     @dataclass
     class Car(DataClassBridge):
-        wheels: list[str] = field(default_factory=list, metadata={'jsonmodel': fields.ListField(items_types=[str], omit_empty=True)})
+        wheels: list[str] = field(default_factory=list,
+                                  metadata={'jsonmodel': fields.ListField(items_types=[str], omit_empty=True)})
 
     viper = Car()
     assert viper.to_struct() == {}
+
 
 def test_embedded_model():
 
@@ -109,6 +114,7 @@ def test_embedded_model():
     entity.validate()
     assert entity.to_struct() == {'name': 'chuck'}
 
+
 def test_help_text():
 
     @dataclass
@@ -120,6 +126,7 @@ def test_help_text():
     person = Person()
     assert person.get_field('name').help_text == 'Name of person.'
     assert person.get_field('age').help_text == 'Age of person.'
+
 
 def test_to_struct_nested_1():
 
@@ -148,6 +155,7 @@ def test_to_struct_nested_1():
     pattern['car']['brand'] = 'Fiat'
     assert pattern == place.to_struct()
 
+
 def test_to_struct_nested_2():
 
     @dataclass
@@ -162,7 +170,8 @@ def test_to_struct_nested_2():
     @dataclass
     class Parking(DataClassBridge):
         location: str | None = field(default=None, metadata={'jsonmodel': fields.StringField()})
-        cars: list[DataClassBridge] = field(default_factory=list, metadata={'jsonmodel': fields.ListField(items_types=[Viper, Lamborghini])})
+        cars: list[DataClassBridge] = field(default_factory=list,
+                                            metadata={'jsonmodel': fields.ListField(items_types=[Viper, Lamborghini])})
 
     parking = Parking()
     pattern: dict = {'cars': []}
@@ -188,6 +197,7 @@ def test_to_struct_nested_2():
     pattern['cars'].append({'serial': '54321'})
     assert pattern == parking.to_struct()
 
+
 def test_to_struct_with_non_models_types():
 
     @dataclass
@@ -212,6 +222,7 @@ def test_to_struct_with_non_models_types():
     pattern['names'].append('Testa')
     assert pattern == person.to_struct()
 
+
 def test_to_struct_with_multi_non_models_types():
 
     @dataclass
@@ -235,6 +246,7 @@ def test_to_struct_with_multi_non_models_types():
     pattern['mix'].append('different')
     assert pattern == person.to_struct()
 
+
 def test_list_to_struct():
 
     @dataclass
@@ -251,7 +263,8 @@ def test_list_to_struct():
     class Person(DataClassBridge):
         name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
         surname: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
-        pets: list[DataClassBridge] = field(default_factory=list, metadata={'jsonmodel': fields.ListField(items_types=[Cat, Dog])})
+        pets: list[DataClassBridge] = field(default_factory=list,
+                                            metadata={'jsonmodel': fields.ListField(items_types=[Cat, Dog])})
 
     cat = Cat(name='Garfield')
     dog = Dog(name='Dogmeat', age=9)
@@ -266,6 +279,7 @@ def test_list_to_struct():
         ]
     }
     assert pattern == person.to_struct()
+
 
 # With dataclasses and static typing we don't have any automatic
 # type conversion so this test becomes a static type error.
@@ -309,6 +323,7 @@ def test_mixed_nested_models():
     pattern['car']['brand'] = 'Fiat'
     assert pattern == place.to_struct()
 
+
 def test_mixed_nested_models2():
 
     @dataclass
@@ -335,6 +350,7 @@ def test_mixed_nested_models2():
     pattern['car']['brand'] = 'Fiat'
     assert pattern == place.to_struct()
 
+
 def test_schema_model1():
 
     @dataclass
@@ -348,6 +364,7 @@ def test_schema_model1():
 
     pattern = get_fixture('schema1.json')
     assert compare_schemas(pattern, schema) is True
+
 
 def test_schema_model2():
 
@@ -372,7 +389,9 @@ def test_schema_model2():
         name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
         surname: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
         age: int | None = field(default=None, metadata={'jsonmodel': fields.IntField()})
-        kids: list[Kid] | None = field(default_factory=list, metadata={'jsonmodel': fields.ListField(Kid, default=[Kid(name="Name", surname="Surname")])})
+        kids: list[Kid] | None = field(default_factory=list,
+                                       metadata={'jsonmodel': fields.ListField(Kid, default=[
+                                           Kid(name="Name", surname="Surname")])})
         car: Car | None = field(default=None, metadata={'jsonmodel': fields.EmbeddedField(Car)})
 
     chuck = Person()
@@ -416,14 +435,19 @@ def test_schema_model3():
         name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
         surname: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
         age: int | None = field(default=None, metadata={'jsonmodel': fields.IntField()})
-        car: list[Viper | Lamborghini] | None = field(default_factory=list, metadata={'jsonmodel': fields.EmbeddedField([Viper, Lamborghini])})
-        computer: list[PC | Laptop | Tablet] | None = field(default_factory=list, metadata={'jsonmodel': fields.ListField([PC, Laptop, Tablet])})
+        car: list[Viper | Lamborghini] | None = field(default_factory=list,
+                                                      metadata={'jsonmodel': fields.EmbeddedField([
+                                                          Viper, Lamborghini])})
+        computer: list[PC | Laptop | Tablet] | None = field(default_factory=list,
+                                                            metadata={'jsonmodel': fields.ListField([
+                                                                PC, Laptop, Tablet])})
         meta: dict | None = field(default=None, metadata={'jsonmodel': fields.GenericField()})
 
     schema = Person.to_json_schema()
 
     pattern = get_fixture('schema3.json')
     assert compare_schemas(pattern, schema) is True
+
 
 def test_schema_datetime_fields():
     @dataclass
@@ -437,6 +461,7 @@ def test_schema_datetime_fields():
     pattern = get_fixture('schema4.json')
     assert compare_schemas(pattern, schema) is True
 
+
 def test_schema_bool_field():
     @dataclass
     class Person(DataClassBridge):
@@ -446,6 +471,7 @@ def test_schema_bool_field():
 
     pattern = get_fixture('schema5.json')
     assert compare_schemas(pattern, schema) is True
+
 
 def test_validators_can_modify_schema():
 
@@ -463,11 +489,17 @@ def test_validators_can_modify_schema():
     @dataclass
     class Person(DataClassBridge):
 
-        name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(validators=ClassBasedValidator())})
-        surname: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(validators=function_validator)})
+        name: str | None = field(default=None,
+                                 metadata={'jsonmodel': fields.StringField(validators=ClassBasedValidator())})
+        surname: str | None = field(default=None,
+                                    metadata={'jsonmodel': fields.StringField(validators=function_validator)})
 
-        friend_names: list[str] | None = field(default_factory=list, metadata={'jsonmodel': fields.ListField(str, item_validators=ClassBasedValidator())})
-        friend_surnames: list[str] | None = field(default_factory=list, metadata={'jsonmodel': fields.ListField(str, item_validators=function_validator)})
+        friend_names: list[str] | None = field(default_factory=list,
+                                               metadata={'jsonmodel':
+                                                         fields.ListField(str, item_validators=ClassBasedValidator())})
+        friend_surnames: list[str] | None = field(default_factory=list,
+                                                  metadata={'jsonmodel':
+                                                            fields.ListField(str, item_validators=function_validator)})
 
     for person in [Person, Person()]:
         schema = person.to_json_schema()
@@ -496,7 +528,8 @@ def test_min_validator_with_exclusive():
     class Person(DataClassBridge):
         name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField()})
         surname: str | None = field(default=None, metadata={'jsonmodel': fields.StringField()})
-        age: int | None = field(default=None, metadata={'jsonmodel': fields.IntField(validators=validators.Min(18, True))})
+        age: int | None = field(default=None,
+                                metadata={'jsonmodel': fields.IntField(validators=validators.Min(18, True))})
 
     schema = Person.to_json_schema()
 

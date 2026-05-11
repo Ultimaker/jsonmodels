@@ -4,7 +4,7 @@ import datetime
 import re
 import six
 from dateutil.parser import parse
-from typing import List, Optional, Dict, Set, Union, Pattern, Type, Any
+from typing import List, Optional, Dict, Union, Pattern, Type, Any
 
 from .collections import ModelCollection
 from .errors import RequiredFieldError, BadTypeError, AmbiguousTypeError
@@ -122,7 +122,7 @@ class BaseField(object):
                    in model.iterate_with_name()
                 } for model in models
                 if hasattr(model, "iterate_with_name")
-            }  # type: Dict[type, Set[str]]
+            }
             matching_models = [model for model, fields in model_fields.items()
                                if fields.issuperset(value)]
 
