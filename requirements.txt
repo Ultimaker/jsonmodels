@@ -19,3 +19,4 @@ tox
 virtualenv
 wheel
 python-dateutil
+setuptools
