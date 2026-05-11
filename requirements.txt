@@ -18,3 +18,5 @@ sphinxcontrib-spelling
 tox
 virtualenv
 wheel
+python-dateutil
+setuptools

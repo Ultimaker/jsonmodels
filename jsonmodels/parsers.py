@@ -14,14 +14,26 @@ def to_struct(model):
     model.validate()
 
     resp = {}
-    for _, name, field in model.iterate_with_name():
-        value = field.__get__(model)
-        if value is None:
-            continue
 
-        value = field.to_struct(value)
-        if value is not None:
-            resp[name] = value
+    if model._cache_key is None:
+        for _, name, field in model.iterate_with_name():
+            value = getattr(model, name)
+            if value is None:
+                continue
+
+            value = field.to_struct(value)
+            if value is not None:
+                resp[name] = value
+
+    else:
+        for _, name, field in model.iterate_with_name():
+            value = field.__get__(model)
+            if value is None:
+                continue
+
+            value = field.to_struct(value)
+            if value is not None:
+                resp[name] = value
     return resp
 
 
@@ -40,7 +52,8 @@ def build_json_schema(value, parent_builder=None):
     from .models import Base
 
     cls = value if inspect.isclass(value) else value.__class__
-    if issubclass(cls, Base):
+    # Dataclass bridge is not subclass of Base, but it has _cache_key=None attribute.
+    if issubclass(cls, Base) or hasattr(cls, "_cache_key"):
         return build_json_schema_object(cls, parent_builder)
     else:
         return build_json_schema_primitive(cls, parent_builder)
