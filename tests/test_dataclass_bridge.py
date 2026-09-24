@@ -22,13 +22,15 @@ def test_model1():
         name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField()})
         surname: str | None = field(default=None, metadata={'jsonmodel': fields.StringField()})
         age: int | None = field(default=None, metadata={'jsonmodel': fields.IntField()})
+        from_: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(name='from')})
 
     alan = Person()
 
     alan.name = 'Alan'
     alan.surname = 'Wake'
     alan.age = 34
-    assert {'name': 'Alan', 'surname': 'Wake', 'age': 34} == alan.to_struct()
+    alan.from_ = 'America'
+    assert {'name': 'Alan', 'surname': 'Wake', 'age': 34, 'from': 'America'} == alan.to_struct()
 
 
 def test_required():

@@ -16,14 +16,14 @@ def to_struct(model):
     resp = {}
 
     if model._cache_key is None:
-        for _, name, field in model.iterate_with_name():
-            value = getattr(model, name)
+        for attr_name, structure_name, field in model.iterate_with_name():
+            value = getattr(model, attr_name)
             if value is None:
                 continue
 
             value = field.to_struct(value)
             if value is not None:
-                resp[name] = value
+                resp[structure_name] = value
 
     else:
         for _, name, field in model.iterate_with_name():

@@ -16,11 +16,16 @@ class DataClassBridge:
         """Iterate through fields as `(attribute_name, field_instance)`."""
         for f in dataclass_fields(cls):
             json_key = f.metadata.get("jsonmodel", None)
+            if json_key is None:
+                continue
+            if hasattr(json_key, "_finish_initialization"):
+                json_key._finish_initialization(cls)
             yield f.name, json_key
 
-    def get_field(self, field_name: str) -> fields.BaseField:
+    @classmethod
+    def get_field(cls, field_name: str) -> fields.BaseField:
         """Get field by name."""
-        for name, field in self.iterate_over_fields():
+        for name, field in cls.iterate_over_fields():
             if name == field_name:
                 return field
         raise errors.FieldNotFound(field_name)
