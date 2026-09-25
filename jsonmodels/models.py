@@ -33,6 +33,14 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
         self._cache_key = _CacheKey()
         self.populate(**kwargs)
 
+    @classmethod
+    def from_struct(cls, struct: dict):
+        """Create an instance and populate it from a struct."""
+        instance = object.__new__(cls)
+        instance._cache_key = _CacheKey()
+        instance.populate(**struct)
+        return instance
+
     def populate(self, **values):
         """Populate values to fields. Skip non-existing."""
         values = values.copy()
