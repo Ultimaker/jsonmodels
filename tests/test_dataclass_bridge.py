@@ -283,6 +283,18 @@ def test_list_to_struct():
     assert pattern == person.to_struct()
 
 
+def test_from_struct():
+    @dataclass
+    class Cat(DataClassBridge):
+        name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
+        from_: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(name='from')})
+
+    flat_cat = {'name': 'Garfield', 'from': 'USA'}
+    garfield = Cat.from_struct(flat_cat)
+    assert garfield.name == 'Garfield'
+    assert garfield.from_ == 'USA'
+
+
 # With dataclasses and static typing we don't have any automatic
 # type conversion so this test becomes a static type error.
 

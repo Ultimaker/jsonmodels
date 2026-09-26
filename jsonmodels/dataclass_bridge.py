@@ -12,6 +12,25 @@ class DataClassBridge:
         return parsers.to_struct(self)
 
     @classmethod
+    def from_struct(cls, struct: dict):
+        """Create an instance and populate it from a struct."""
+        instance = cls()
+
+        instance.populate(**struct)
+        return instance
+
+    def populate(self, **values):
+        """Populate values to fields. Skip non-existing."""
+        values = values.copy()
+        fields = list(self.iterate_with_name())
+        for name, structure_name, field in fields:
+            if structure_name in values:
+                setattr(self, name, values.pop(structure_name))
+        for name, _, field in fields:
+            if name in values:
+                setattr(self, name, values.pop(name))
+
+    @classmethod
     def iterate_over_fields(cls):
         """Iterate through fields as `(attribute_name, field_instance)`."""
         for f in dataclass_fields(cls):
