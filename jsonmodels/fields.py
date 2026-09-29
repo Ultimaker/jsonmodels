@@ -665,7 +665,7 @@ class DateTimeField(StringField):
             return value.strftime(self.str_format)
         return value.isoformat()
 
-    def toBsonEncodable(self, value: datetime) -> datetime:
+    def toBsonEncodable(self, value: datetime.datetime) -> datetime.datetime:
         """
         Keep datetime object a datetime object, since pymongo supports that.
         """
@@ -675,6 +675,19 @@ class DateTimeField(StringField):
 
     def parse_value(self, value):
         """Parse string into instance of `datetime`."""
+        if isinstance(value, datetime.datetime):
+            return value
+        if value:
+            return parse(value)
+        else:
+            return None
+
+    @classmethod
+    def parse(cls, value: str | datetime.datetime) -> datetime.datetime | None:
+        """Static method to parse a string to a datetime.
+
+        This is the same algorithm as `parse_value()`.
+        """
         if isinstance(value, datetime.datetime):
             return value
         if value:
