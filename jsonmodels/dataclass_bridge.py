@@ -25,10 +25,12 @@ class DataClassBridge:
         fields = list(self.iterate_with_name())
         for name, structure_name, field in fields:
             if structure_name in values:
-                setattr(self, name, values.pop(structure_name))
+                clean_value = field.parse_value(values.pop(structure_name))
+                setattr(self, name, clean_value)
         for name, _, field in fields:
             if name in values:
-                setattr(self, name, values.pop(name))
+                clean_value = field.parse_value(values.pop(name))
+                setattr(self, name, clean_value)
 
     @classmethod
     def iterate_over_fields(cls):

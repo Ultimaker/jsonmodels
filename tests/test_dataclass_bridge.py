@@ -288,11 +288,16 @@ def test_from_struct():
     class Cat(DataClassBridge):
         name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
         from_: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(name='from')})
+        time_of_birth: datetime.time | None = field(default=None, metadata={'jsonmodel': fields.TimeField()})
 
-    flat_cat = {'name': 'Garfield', 'from': 'USA'}
+    flat_cat = {'name': 'Garfield', 'from': 'USA', 'time_of_birth': '01:00:00'}
     garfield = Cat.from_struct(flat_cat)
     assert garfield.name == 'Garfield'
     assert garfield.from_ == 'USA'
+    assert garfield.time_of_birth == datetime.time(1, 0)
+
+    garfield.time_of_birth = datetime.time(2, 0)
+    assert garfield.time_of_birth == datetime.time(2, 0)
 
 
 # With dataclasses and static typing we don't have any automatic
