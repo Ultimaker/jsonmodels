@@ -14,9 +14,19 @@ class DataClassBridge:
     @classmethod
     def from_struct(cls, struct: dict):
         """Create an instance and populate it from a struct."""
-        instance = object.__new__(cls)
-        instance.populate(**struct)
-        return instance
+        values = struct.copy()
+        fields = list(cls.iterate_with_name())
+        kwargs = {}
+        for name, structure_name, field in fields:
+            if structure_name in values:
+                clean_value = field.parse_value(values.pop(structure_name))
+                kwargs[name] = clean_value
+        for name, _, field in fields:
+            if name in values:
+                clean_value = field.parse_value(values.pop(name))
+                kwargs[name] = clean_value
+
+        return cls(**kwargs)
 
     def populate(self, **values):
         """Populate values to fields. Skip non-existing."""

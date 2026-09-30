@@ -300,6 +300,25 @@ def test_from_struct():
     assert garfield.time_of_birth == datetime.time(2, 0)
 
 
+def test_from_struct_roundtrip():
+    @dataclass
+    class Cat(DataClassBridge):
+        name: str | None = field(default=None, metadata={'jsonmodel': fields.StringField(required=True)})
+
+    @dataclass
+    class CatHotel(DataClassBridge):
+        cats: list[Cat] = field(default_factory=list, metadata={'jsonmodel': fields.ListField(items_types=[Cat])})
+
+    hotel = CatHotel(cats=[Cat(name='Garfield')])
+    hotel.validate()
+
+    hotel2 = CatHotel.from_struct(hotel.to_struct())
+    hotel2.validate()
+
+    hotel_with_defaults = CatHotel.from_struct({})
+    hotel_with_defaults.validate()
+
+
 # With dataclasses and static typing we don't have any automatic
 # type conversion so this test becomes a static type error.
 
