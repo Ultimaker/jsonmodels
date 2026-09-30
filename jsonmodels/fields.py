@@ -447,7 +447,7 @@ class EmbeddedField(BaseField):
             return value
 
         embed_type = self._get_embed_type(value, self.types)
-        return embed_type(**value)
+        return embed_type.from_struct(value)
 
     def to_struct(self, value):
         return value.to_struct()
