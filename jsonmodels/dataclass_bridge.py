@@ -14,8 +14,7 @@ class DataClassBridge:
     @classmethod
     def from_struct(cls, struct: dict):
         """Create an instance and populate it from a struct."""
-        instance = cls()
-
+        instance = object.__new__(cls)
         instance.populate(**struct)
         return instance
 
