@@ -318,7 +318,7 @@ class ListField(BaseField):
             return value
         elif isinstance(value, dict):
             model_type = self._get_embed_type(value, self.items_types)
-            return model_type(**value)
+            return model_type.from_struct(value)
         else:
             raise BadTypeError(value, self.items_types, is_list=True)
 
