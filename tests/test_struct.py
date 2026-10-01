@@ -230,3 +230,14 @@ def test_to_struct_datetime():
         'start': '2013-05-06T12:03:34'
     }
     assert pattern == event.to_struct()
+
+
+def test_from_struct():
+    class Cat(models.Base):
+        name = fields.StringField(required=True)
+        from_ = fields.StringField(required=True, name="from")
+
+    struct = {'name': 'Garfield', 'from': 'US'}
+    garfield = Cat.from_struct(struct)
+    assert garfield.name == 'Garfield'
+    assert garfield.from_ == 'US'

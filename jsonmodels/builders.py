@@ -211,7 +211,7 @@ class ListBuilder(Builder):
     @staticmethod
     def to_struct(item):
         from .models import Base
-        if isinstance(item, Base):
+        if isinstance(item, Base) or hasattr(item, "_cache_key"):
             return item.to_struct()
         return item
 
