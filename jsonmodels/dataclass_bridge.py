@@ -15,15 +15,17 @@ class DataClassBridge:
     def from_struct(cls, struct: dict):
         """Create an instance and populate it from a struct."""
         values = struct.copy()
-        fields = list(cls.iterate_with_name())
         kwargs = {}
+
+        fields = list(cls.iterate_with_name())
+        fields = fields + [(field[0], field[0], field[2]) for field in fields]
         for name, structure_name, field in fields:
             if structure_name in values:
-                clean_value = field.parse_value(values.pop(structure_name))
-                kwargs[name] = clean_value
-        for name, _, field in fields:
-            if name in values:
-                clean_value = field.parse_value(values.pop(name))
+                value = values.pop(structure_name)
+                try:
+                    clean_value = field.parse_value(value)
+                except ValidatorError as error:
+                    raise FieldValidationError(cls.__name__, structure_name, value, error)
                 kwargs[name] = clean_value
 
         return cls(**kwargs)
