@@ -4,7 +4,7 @@ import datetime
 import re
 import six
 from dateutil.parser import parse
-from typing import List, Optional, Dict, Set, Union, Pattern, Type, Any
+from typing import List, Optional, Dict, Union, Pattern, Type, Any
 
 from .collections import ModelCollection
 from .errors import RequiredFieldError, BadTypeError, AmbiguousTypeError
@@ -122,7 +122,7 @@ class BaseField(object):
                    in model.iterate_with_name()
                 } for model in models
                 if hasattr(model, "iterate_with_name")
-            }  # type: Dict[type, Set[str]]
+            }
             matching_models = [model for model, fields in model_fields.items()
                                if fields.issuperset(value)]
 
@@ -318,7 +318,7 @@ class ListField(BaseField):
             return value
         elif isinstance(value, dict):
             model_type = self._get_embed_type(value, self.items_types)
-            return model_type(**value)
+            return model_type.from_struct(value)
         else:
             raise BadTypeError(value, self.items_types, is_list=True)
 
@@ -447,7 +447,7 @@ class EmbeddedField(BaseField):
             return value
 
         embed_type = self._get_embed_type(value, self.types)
-        return embed_type(**value)
+        return embed_type.from_struct(value)
 
     def to_struct(self, value):
         return value.to_struct()
@@ -665,7 +665,7 @@ class DateTimeField(StringField):
             return value.strftime(self.str_format)
         return value.isoformat()
 
-    def toBsonEncodable(self, value: datetime) -> datetime:
+    def toBsonEncodable(self, value: datetime.datetime) -> datetime.datetime:
         """
         Keep datetime object a datetime object, since pymongo supports that.
         """
@@ -675,6 +675,19 @@ class DateTimeField(StringField):
 
     def parse_value(self, value):
         """Parse string into instance of `datetime`."""
+        if isinstance(value, datetime.datetime):
+            return value
+        if value:
+            return parse(value)
+        else:
+            return None
+
+    @classmethod
+    def parse(cls, value: str | datetime.datetime) -> datetime.datetime | None:
+        """Static method to parse a string to a datetime.
+
+        This is the same algorithm as `parse_value()`.
+        """
         if isinstance(value, datetime.datetime):
             return value
         if value:
