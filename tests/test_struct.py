@@ -241,3 +241,13 @@ def test_from_struct():
     garfield = Cat.from_struct(struct)
     assert garfield.name == 'Garfield'
     assert garfield.from_ == 'US'
+
+
+def test_from_struct_missing():
+    class Cat(models.Base):
+        name = fields.StringField(required=True)
+        from_ = fields.StringField(required=True, name="from")
+
+    struct = {'from': 'US'}
+    with pytest.raises(errors.FieldValidationError):
+        Cat.from_struct(struct)

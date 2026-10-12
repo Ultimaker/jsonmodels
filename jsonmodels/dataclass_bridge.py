@@ -1,6 +1,7 @@
 from dataclasses import dataclass, fields as dataclass_fields
 from jsonmodels import fields, parsers, errors
-from jsonmodels.errors import FieldValidationError, ValidatorError
+from jsonmodels.errors import FieldValidationError, ValidatorError, RequiredFieldError
+import inspect
 
 
 @dataclass
@@ -28,7 +29,27 @@ class DataClassBridge:
                     raise FieldValidationError(cls.__name__, structure_name, value, error)
                 kwargs[name] = clean_value
 
+        for required_field_name in cls.__get_required_fields():
+            if required_field_name not in kwargs:
+                raise FieldValidationError(cls.__name__, required_field_name, None, RequiredFieldError())
+
         return cls(**kwargs)
+
+    @classmethod
+    def __get_required_fields(cls) -> list[str]:
+        # Retrieve the signature of the class constructor
+        sig = inspect.signature(cls.__init__)
+
+        required: list[str] = []
+        for name, param in sig.parameters.items():
+            # Exclude 'self' and variable keyword/positional args (*args, **kwargs)
+            if name == 'self' or param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+                continue
+
+            # A field is required if it has no default value
+            if param.default is param.empty:
+                required.append(name)
+        return required
 
     def populate(self, **values):
         """Populate values to fields. Skip non-existing."""

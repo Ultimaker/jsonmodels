@@ -39,6 +39,7 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
         instance = object.__new__(cls)
         instance._cache_key = _CacheKey()
         instance.populate(**struct)
+        instance.validate()
         return instance
 
     def populate(self, **values):

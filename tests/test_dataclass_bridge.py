@@ -300,6 +300,17 @@ def test_from_struct():
     assert garfield.time_of_birth == datetime.time(2, 0)
 
 
+def test_from_struct_missing():
+    @dataclass
+    class Cat(DataClassBridge):
+        name: str = field(metadata={'jsonmodel': fields.StringField(required=True)})
+        from_: str = field(default="?", metadata={'jsonmodel': fields.StringField(name='from')})
+
+    flat_cat = {'from': 'USA'}
+    with pytest.raises(errors.FieldValidationError):
+        Cat.from_struct(flat_cat)
+
+
 def test_from_struct_roundtrip():
     @dataclass
     class Cat(DataClassBridge):
@@ -318,7 +329,6 @@ def test_from_struct_roundtrip():
     hotel_with_defaults = CatHotel.from_struct({})
     hotel_with_defaults.validate()
 
-
 # With dataclasses and static typing we don't have any automatic
 # type conversion so this test becomes a static type error.
 
@@ -334,6 +344,7 @@ def test_from_struct_roundtrip():
 #         'time': '12:03:34'
 #     }
 #     assert pattern == clock.to_struct()
+
 
 def test_mixed_nested_models():
 
