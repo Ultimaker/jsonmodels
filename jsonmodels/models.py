@@ -34,9 +34,9 @@ class Base(six.with_metaclass(JsonmodelMeta, object)):
         self.populate(**kwargs)
 
     @classmethod
-    def from_struct(cls, struct: dict):
+    def from_struct(cls, struct: dict, target_cls=None):
         """Create an instance and populate it from a struct."""
-        instance = object.__new__(cls)
+        instance = object.__new__(cls if target_cls is None else target_cls)
         instance._cache_key = _CacheKey()
         instance.populate(**struct)
         instance.validate()

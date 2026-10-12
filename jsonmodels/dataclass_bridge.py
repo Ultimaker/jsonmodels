@@ -13,12 +13,15 @@ class DataClassBridge:
         return parsers.to_struct(self)
 
     @classmethod
-    def from_struct(cls, struct: dict):
+    def from_struct(cls, struct: dict, target_cls=None):
         """Create an instance and populate it from a struct."""
         values = struct.copy()
         kwargs = {}
 
-        fields = list(cls.iterate_with_name())
+        if target_cls is None:
+            target_cls = cls
+
+        fields = list(target_cls.iterate_with_name())
         fields = fields + [(field[0], field[0], field[2]) for field in fields]
         for name, structure_name, field in fields:
             if structure_name in values:
@@ -26,14 +29,14 @@ class DataClassBridge:
                 try:
                     clean_value = field.parse_value(value)
                 except ValidatorError as error:
-                    raise FieldValidationError(cls.__name__, structure_name, value, error)
+                    raise FieldValidationError(target_cls.__name__, structure_name, value, error)
                 kwargs[name] = clean_value
 
-        for required_field_name in cls.__get_required_fields():
+        for required_field_name in target_cls.__get_required_fields():
             if required_field_name not in kwargs:
-                raise FieldValidationError(cls.__name__, required_field_name, None, RequiredFieldError())
+                raise FieldValidationError(target_cls.__name__, required_field_name, None, RequiredFieldError())
 
-        return cls(**kwargs)
+        return target_cls(**kwargs)
 
     @classmethod
     def __get_required_fields(cls) -> list[str]:
